@@ -1,15 +1,19 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "@/store/app";
+import { supabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 
+const PENDING_ONBOARDING_KEY = "pending-onboarding";
+
 export default function Register() {
   const navigate = useNavigate();
-  const register = useApp((s) => s.register);
+  const setCurrentUserFromSupabase = useApp((s) => s.setCurrentUserFromSupabase);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [form, setForm] = useState({
     business: "",
@@ -22,14 +26,73 @@ export default function Register() {
 
   const set = (k: keyof typeof form, v: string) => setForm({ ...form, [k]: v });
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (Object.values(form).some((v) => !v)) return toast.error("Completa todos los campos");
     if (form.password.length < 6) return toast.error("La contraseña debe tener mínimo 6 caracteres");
     if (!/^\d{10,15}$/.test(form.whatsapp)) return toast.error("WhatsApp inválido (solo números, ej: 573001234567)");
-    register({ ...form, avatar: undefined });
+    setIsSubmitting(true);
+    localStorage.setItem(PENDING_ONBOARDING_KEY, JSON.stringify({
+      email: form.email.toLowerCase(),
+      name: form.name,
+      business: form.business,
+      whatsapp: form.whatsapp,
+      location: form.location,
+    }));
+
+    const { data, error } = await supabase.auth.signUp({
+      email: form.email,
+      password: form.password,
+      options: {
+        data: {
+          name: form.name,
+          business: form.business,
+          whatsapp: form.whatsapp,
+          location: form.location,
+        },
+      },
+    });
+
+    if (error || !data.user) {
+      setIsSubmitting(false);
+      return toast.error(error?.message ?? "No se pudo crear la cuenta");
+    }
+
+    if (!data.session) {
+      setIsSubmitting(false);
+      toast.success("Cuenta creada. Revisa tu correo para confirmar y luego inicia sesión.");
+      return navigate("/login");
+    }
+
+    const { error: businessError } = await supabase.from("businesses").insert({
+      profile_id: data.user.id,
+      nombre_negocio: form.business,
+      whatsapp: form.whatsapp,
+      ubicacion: form.location,
+      descripcion: "",
+      foto_perfil_url: null,
+    });
+
+    if (businessError) {
+      setIsSubmitting(false);
+      return toast.error(`Cuenta creada, pero falló crear el negocio: ${businessError.message}`);
+    }
+
+    setCurrentUserFromSupabase({
+      id: data.user.id,
+      name: form.name,
+      email: form.email,
+      whatsapp: form.whatsapp,
+      business: form.business,
+      location: form.location,
+      role: "emprendedor",
+      status: "pendiente",
+      avatar: undefined,
+    });
+
     toast.success("Cuenta creada con éxito 🎉");
     navigate("/panel");
+    setIsSubmitting(false);
   };
 
   return (
@@ -65,7 +128,9 @@ export default function Register() {
               <Label>Contraseña</Label>
               <Input type="password" value={form.password} onChange={(e) => set("password", e.target.value)} />
             </div>
-            <Button type="submit" className="sm:col-span-2 mt-2">Crear cuenta</Button>
+            <Button type="submit" className="sm:col-span-2 mt-2" disabled={isSubmitting}>
+              {isSubmitting ? "Creando..." : "Crear cuenta"}
+            </Button>
           </form>
         </CardContent>
       </Card>

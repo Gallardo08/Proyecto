@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { Store, BookOpen, LogIn, UserPlus, LayoutDashboard, ShieldCheck, LogOut } from "lucide-react";
 import { useApp, useCurrentUser } from "@/store/app";
+import { supabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +14,10 @@ export default function Layout() {
   const user = useCurrentUser();
   const logout = useApp((s) => s.logout);
   const { pathname } = useLocation();
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    logout();
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -54,7 +59,7 @@ export default function Layout() {
                   </Button>
                 )}
                 <span className="hidden sm:inline text-sm text-muted-foreground">Hola, <b className="text-foreground">{user.name.split(" ")[0]}</b></span>
-                <Button variant="outline" size="sm" onClick={logout}><LogOut className="h-4 w-4" /></Button>
+                <Button variant="outline" size="sm" onClick={handleLogout}><LogOut className="h-4 w-4" /></Button>
               </>
             ) : (
               <>

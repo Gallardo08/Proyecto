@@ -23,6 +23,7 @@ type State = {
   currentUserId: string | null;
   categories: string[];
   officialWhatsapp: string;
+  setCurrentUserFromSupabase: (u: Omit<User, "password">) => void;
   login: (id: string, password: string) => User | null;
   register: (u: Omit<User, "id" | "role" | "status">) => User;
   logout: () => void;
@@ -64,6 +65,15 @@ export const useApp = create<State>()(
       currentUserId: null,
       categories: ["Comida", "Moda", "Tecnología", "Hogar", "Belleza", "Servicios", "Artesanías"],
       officialWhatsapp: "573000000000",
+      setCurrentUserFromSupabase: (authUser) =>
+        set((s) => {
+          const existing = s.users.find((u) => u.id === authUser.id);
+          const nextUser: User = { ...existing, ...authUser, password: existing?.password ?? "" };
+          const users = existing
+            ? s.users.map((u) => (u.id === authUser.id ? nextUser : u))
+            : [...s.users, nextUser];
+          return { users, currentUserId: authUser.id };
+        }),
 
       login: (id, password) => {
         const u = get().users.find(
