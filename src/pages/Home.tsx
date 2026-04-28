@@ -1,28 +1,42 @@
 import { Link } from "react-router-dom";
-import { useApp } from "@/store/app";
 import { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, MapPin, Tag, ArrowRight, Sparkles } from "lucide-react";
+import { Search, MapPin, Tag, ArrowRight, Sparkles, Store } from "lucide-react";
+import { useProducts, useProductsByCategory } from "@/hooks/useSupabase";
+import CategoryFilter from "@/components/CategoryFilter";
+import ProductGallery from "@/components/ProductGallery";
+import type { ProductWithRelations } from "@/types/database";
 
 export default function Home() {
-  const { products, categories } = useApp();
-  const [q, setQ] = useState("");
-  const [cat, setCat] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  const filtered = useMemo(
-    () =>
-      products.filter(
-        (p) =>
-          (cat ? p.category === cat : true) &&
-          (q
-            ? (p.name + p.business + p.description).toLowerCase().includes(q.toLowerCase())
-            : true)
-      ),
-    [products, q, cat]
-  );
+  // Obtener productos según la categoría seleccionada
+  const { data: allProducts = [], isLoading: allLoading } = useProducts();
+  const { data: categoryProducts = [], isLoading: categoryLoading } = useProductsByCategory(selectedCategory || "");
+
+  // Determinar qué productos mostrar
+  const products = selectedCategory ? categoryProducts : allProducts;
+  const loading = selectedCategory ? categoryLoading : allLoading;
+
+  // Filtrar por búsqueda
+  const filteredProducts = useMemo(() => {
+    if (!searchQuery) return products;
+    
+    const query = searchQuery.toLowerCase();
+    return products.filter((product) => 
+      product.nombre.toLowerCase().includes(query) ||
+      product.business.nombre_negocio.toLowerCase().includes(query) ||
+      product.descripcion?.toLowerCase().includes(query) ||
+      product.category.nombre_categoria.toLowerCase().includes(query)
+    );
+  }, [products, searchQuery]);
+
+  // Productos para el hero (primeros 4)
+  const heroProducts = allProducts.slice(0, 4);
 
   return (
     <>
@@ -31,7 +45,9 @@ export default function Home() {
         <div className="absolute inset-0 bg-gradient-soft" aria-hidden />
         <div className="container relative py-16 md:py-24 grid md:grid-cols-2 gap-10 items-center">
           <div>
-            <Badge variant="secondary" className="mb-4 gap-1.5"><Sparkles className="h-3.5 w-3.5" /> Plataforma local</Badge>
+            <Badge variant="secondary" className="mb-4 gap-1.5">
+              <Sparkles className="h-3.5 w-3.5" /> Plataforma local
+            </Badge>
             <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-tight">
               Descubre los <span className="text-primary">mejores negocios</span> de Ocaña
             </h1>
@@ -49,15 +65,35 @@ export default function Home() {
           </div>
           <div className="relative">
             <div className="aspect-[4/3] rounded-2xl bg-gradient-primary shadow-soft p-6 grid grid-cols-2 gap-4">
-              {products.slice(0, 4).map((p) => (
-                <div key={p.id} className="rounded-xl bg-card overflow-hidden shadow-card">
-                  <img src={p.image} alt={p.name} className="h-24 w-full object-cover" />
+              {heroProducts.map((product) => (
+                <div key={product.id} className="rounded-xl bg-card overflow-hidden shadow-card">
+                  {product.imagen_url ? (
+                    <img 
+                      src={product.imagen_url} 
+                      alt={product.nombre} 
+                      className="h-24 w-full object-cover" 
+                    />
+                  ) : (
+                    <div className="h-24 w-full bg-muted flex items-center justify-center">
+                      <Store className="h-6 w-6 text-muted-foreground/50" />
+                    </div>
+                  )}
                   <div className="p-2">
-                    <p className="text-xs font-semibold truncate">{p.name}</p>
-                    <p className="text-[10px] text-muted-foreground truncate">{p.business}</p>
+                    <p className="text-xs font-semibold truncate">{product.nombre}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">
+                      {product.business.nombre_negocio}
+                    </p>
                   </div>
                 </div>
               ))}
+              {heroProducts.length === 0 && (
+                <div className="col-span-2 flex items-center justify-center">
+                  <div className="text-center">
+                    <Store className="h-8 w-8 text-muted-foreground/50 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">Cargando productos...</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -68,47 +104,44 @@ export default function Home() {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
           <div>
             <h2 className="text-2xl md:text-3xl font-bold">Catálogo de negocios</h2>
-            <p className="text-muted-foreground">Explora publicaciones de emprendedores ocañeros.</p>
+            <p className="text-muted-foreground">
+              Explora publicaciones de emprendedores ocañeros.
+            </p>
           </div>
           <div className="relative w-full md:w-80">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar negocio o producto…" className="pl-9" />
+            <Input 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar negocio o producto…" 
+              className="pl-9" 
+            />
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 mb-6">
-          <button onClick={() => setCat(null)} className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${cat === null ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"}`}>Todas</button>
-          {categories.map((c) => (
-            <button key={c} onClick={() => setCat(c)} className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${cat === c ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"}`}>
-              {c}
-            </button>
-          ))}
+        {/* Filtros de categoría */}
+        <div className="mb-8">
+          <CategoryFilter 
+            selectedCategory={selectedCategory}
+            onCategoryChange={setSelectedCategory}
+          />
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-          {filtered.map((p) => (
-            <Link key={p.id} to={`/producto/${p.id}`}>
-              <Card className="overflow-hidden hover:shadow-soft transition-shadow group h-full">
-                <div className="aspect-[4/3] overflow-hidden bg-muted">
-                  <img src={p.image} alt={p.name} className="h-full w-full object-cover group-hover:scale-105 transition-transform" />
-                </div>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <Badge variant="secondary" className="gap-1"><Tag className="h-3 w-3" />{p.category}</Badge>
-                    {p.discount > 0 && <Badge className="bg-accent hover:bg-accent text-accent-foreground">-{p.discount}%</Badge>}
-                  </div>
-                  <h3 className="font-semibold leading-tight line-clamp-1">{p.name}</h3>
-                  <p className="text-sm text-muted-foreground line-clamp-1">{p.business}</p>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1.5"><MapPin className="h-3 w-3" />{p.location}</div>
-                  <p className="mt-3 font-bold text-primary">${p.price.toLocaleString("es-CO")}</p>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-          {filtered.length === 0 && (
-            <p className="col-span-full text-center text-muted-foreground py-12">No se encontraron resultados.</p>
-          )}
-        </div>
+        {/* Galería de productos */}
+        <ProductGallery 
+          products={filteredProducts} 
+          loading={loading}
+        />
+
+        {/* Resultados de búsqueda */}
+        {searchQuery && !loading && (
+          <div className="mt-4 text-center">
+            <p className="text-sm text-muted-foreground">
+              {filteredProducts.length} resultado{filteredProducts.length !== 1 ? 's' : ''} 
+              para "{searchQuery}"
+            </p>
+          </div>
+        )}
       </section>
     </>
   );

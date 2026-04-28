@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { initialProducts, type Product } from "@/data/mock";
+import type { Profile, Business, Category, ProductWithRelations } from "@/types/database";
 
 export type Role = "emprendedor" | "admin" | "visitante";
 
@@ -23,6 +24,11 @@ type State = {
   currentUserId: string | null;
   categories: string[];
   officialWhatsapp: string;
+  // Datos de Supabase (cache)
+  supabaseCategories: Category[];
+  supabaseProducts: ProductWithRelations[];
+  userBusiness: Business | null;
+  // Métodos existentes (mantener compatibilidad)
   setCurrentUserFromSupabase: (u: Omit<User, "password">) => void;
   login: (id: string, password: string) => User | null;
   register: (u: Omit<User, "id" | "role" | "status">) => User;
@@ -33,6 +39,13 @@ type State = {
   setUserStatus: (id: string, status: User["status"]) => void;
   addCategory: (c: string) => void;
   setOfficialWhatsapp: (n: string) => void;
+  // Métodos nuevos para Supabase
+  setSupabaseCategories: (categories: Category[]) => void;
+  setSupabaseProducts: (products: ProductWithRelations[]) => void;
+  setUserBusiness: (business: Business | null) => void;
+  // Utilidades
+  getCategoriesForSelect: () => string[];
+  getProductsForCurrentUser: () => Product[];
 };
 
 const seedAdmin: User = {
@@ -65,6 +78,11 @@ export const useApp = create<State>()(
       currentUserId: null,
       categories: ["Comida", "Moda", "Tecnología", "Hogar", "Belleza", "Servicios", "Artesanías"],
       officialWhatsapp: "573000000000",
+      // Datos de Supabase
+      supabaseCategories: [],
+      supabaseProducts: [],
+      userBusiness: null,
+      
       setCurrentUserFromSupabase: (authUser) =>
         set((s) => {
           const existing = s.users.find((u) => u.id === authUser.id);
@@ -109,8 +127,61 @@ export const useApp = create<State>()(
       addCategory: (c) =>
         set((s) => (s.categories.includes(c) ? s : { categories: [...s.categories, c] })),
       setOfficialWhatsapp: (n) => set({ officialWhatsapp: n }),
+      
+      // Métodos nuevos para Supabase
+      setSupabaseCategories: (categories) => set({ supabaseCategories: categories }),
+      setSupabaseProducts: (products) => set({ supabaseProducts: products }),
+      setUserBusiness: (business) => set({ userBusiness: business }),
+      
+      // Utilidades
+      getCategoriesForSelect: () => {
+        const s = get();
+        // Si hay categorías de Supabase, usarlas, sino las locales
+        if (s.supabaseCategories.length > 0) {
+          return s.supabaseCategories.map(c => c.nombre_categoria);
+        }
+        return s.categories;
+      },
+      
+      getProductsForCurrentUser: () => {
+        const s = get();
+        const user = s.users.find(u => u.id === s.currentUserId);
+        if (!user) return [];
+        
+        // Si hay productos de Supabase, filtrar por business
+        if (s.supabaseProducts.length > 0 && s.userBusiness) {
+          const businessProducts = s.supabaseProducts.filter(p => p.business_id === s.userBusiness?.id);
+          // Convertir a formato antiguo para compatibilidad
+          return businessProducts.map(p => ({
+            id: p.id,
+            name: p.nombre,
+            business: p.business.nombre_negocio,
+            category: p.category.nombre_categoria,
+            price: Number(p.precio),
+            discount: p.descuento || 0,
+            description: p.descripcion || "",
+            location: p.business.ubicacion || "",
+            whatsapp: p.business.whatsapp,
+            image: p.imagen_url || "",
+            date: p.fecha_publicacion.split('T')[0]
+          }));
+        }
+        
+        // Sino usar productos locales
+        return s.products.filter((p) => p.business === user.business);
+      },
     }),
-    { name: "ofertas-ocana" }
+    { 
+      name: "ofertas-ocana",
+      // No persistir datos de Supabase para evitar inconsistencias
+      partialize: (state) => ({
+        users: state.users,
+        products: state.products,
+        currentUserId: state.currentUserId,
+        categories: state.categories,
+        officialWhatsapp: state.officialWhatsapp,
+      })
+    }
   )
 );
 

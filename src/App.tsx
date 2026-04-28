@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Layout from "./components/Layout";
+import ProtectedRoute from "./components/ProtectedRoute";
 import Home from "./pages/Home";
 import ProductDetail from "./pages/ProductDetail";
 import Login from "./pages/Login";
@@ -29,9 +30,25 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/registro" element={<Register />} />
             <Route path="/recuperar" element={<Recover />} />
-            <Route path="/panel" element={<Dashboard />} />
-            <Route path="/admin" element={<Admin />} />
             <Route path="/casos-de-uso" element={<UseCases />} />
+            
+            {/* Rutas protegidas */}
+            <Route 
+              path="/panel" 
+              element={
+                <ProtectedRoute requiredRole="emprendedor">
+                  <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <Admin />
+                </ProtectedRoute>
+              } 
+            />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

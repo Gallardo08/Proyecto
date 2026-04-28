@@ -2,105 +2,257 @@ import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useApp, useCurrentUser } from "@/store/app";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Pencil, Save, X } from "lucide-react";
+import { Plus, Trash2, Pencil, Loader2, Store, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
-import type { Product } from "@/data/mock";
+import { useAuth } from "@/hooks/useAuth";
+import { useUserBusiness, useProductsByBusiness, useDeleteProduct } from "@/hooks/useSupabase";
+import ProductForm from "@/components/ProductForm";
+import type { ProductWithRelations } from "@/types/database";
+
+// Componente para configurar negocio
+function BusinessSetupForm({ onSuccess }: { onSuccess: (data: any) => void }) {
+  const [formData, setFormData] = useState({
+    nombre_negocio: "",
+    whatsapp: "",
+    ubicacion: "",
+    descripcion: ""
+  });
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.nombre_negocio || !formData.whatsapp) {
+      toast.error("Nombre y WhatsApp son obligatorios");
+      return;
+    }
+    setLoading(true);
+    onSuccess(formData);
+    setLoading(false);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="text-sm font-medium">Nombre del Negocio *</label>
+        <input
+          type="text"
+          value={formData.nombre_negocio}
+          onChange={(e) => setFormData({ ...formData, nombre_negocio: e.target.value })}
+          className="w-full mt-1 px-3 py-2 border rounded-md"
+          placeholder="Mi Negocio"
+          required
+        />
+      </div>
+      <div>
+        <label className="text-sm font-medium">WhatsApp *</label>
+        <input
+          type="text"
+          value={formData.whatsapp}
+          onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
+          className="w-full mt-1 px-3 py-2 border rounded-md"
+          placeholder="573001112233"
+          required
+        />
+      </div>
+      <div>
+        <label className="text-sm font-medium">Ubicación</label>
+        <input
+          type="text"
+          value={formData.ubicacion}
+          onChange={(e) => setFormData({ ...formData, ubicacion: e.target.value })}
+          className="w-full mt-1 px-3 py-2 border rounded-md"
+          placeholder="Ocaña, N. Santander"
+        />
+      </div>
+      <div>
+        <label className="text-sm font-medium">Descripción</label>
+        <textarea
+          value={formData.descripcion}
+          onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+          className="w-full mt-1 px-3 py-2 border rounded-md"
+          rows={3}
+          placeholder="Describe tu negocio..."
+        />
+      </div>
+      <Button type="submit" className="w-full" disabled={loading}>
+        {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+        Configurar Negocio
+      </Button>
+    </form>
+  );
+}
 
 export default function Dashboard() {
   const user = useCurrentUser();
-  const { products, categories, addProduct, updateProduct, deleteProduct } = useApp();
+  const { user: authUser, businessName } = useAuth();
+  const { data: business, isLoading: businessLoading } = useUserBusiness();
+  const { data: products = [], isLoading: productsLoading, refetch: refetchProducts } = useProductsByBusiness(business?.id || "");
+  const deleteProduct = useDeleteProduct();
 
-  const [editing, setEditing] = useState<Product | null>(null);
-  const [open, setOpen] = useState(false);
-  const empty: Omit<Product, "id"> = {
-    name: "", business: user?.business || user?.name || "", category: categories[0],
-    price: 0, discount: 0, description: "", location: user?.location || "",
-    whatsapp: user?.whatsapp || "", image: "", date: new Date().toISOString().slice(0, 10),
-  };
-  const [form, setForm] = useState<Omit<Product, "id">>(empty);
+  const [showForm, setShowForm] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<ProductWithRelations | null>(null);
 
   if (!user) return <Navigate to="/login" replace />;
   if (user.role !== "emprendedor") return <Navigate to="/admin" replace />;
 
-  const mine = products.filter((p) => p.business === user.business);
-
-  const startNew = () => { setEditing(null); setForm(empty); setOpen(true); };
-  const startEdit = (p: Product) => { setEditing(p); setForm(p); setOpen(true); };
-
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.name || !form.image || form.price <= 0) return toast.error("Completa nombre, imagen y precio");
-    if (editing) { updateProduct(editing.id, form); toast.success("Publicación actualizada"); }
-    else { addProduct(form); toast.success("Publicación creada"); }
-    setOpen(false);
+  const handleCreateProduct = () => {
+    setEditingProduct(null);
+    setShowForm(true);
   };
+
+  const handleEditProduct = (product: ProductWithRelations) => {
+    setEditingProduct(product);
+    setShowForm(true);
+  };
+
+  const handleFormSuccess = () => {
+    setShowForm(false);
+    setEditingProduct(null);
+    refetchProducts();
+  };
+
+  const handleFormCancel = () => {
+    setShowForm(false);
+    setEditingProduct(null);
+  };
+
+  const handleDeleteProduct = async (productId: string) => {
+    try {
+      await deleteProduct.mutateAsync(productId);
+      toast.success("Producto eliminado correctamente");
+    } catch (error) {
+      toast.error("Error al eliminar el producto");
+    }
+  };
+
+  // Si no tiene business, mostrar formulario para crearlo
+  if (!businessLoading && !business) {
+    return (
+      <div className="container py-8">
+        <Card className="max-w-md mx-auto">
+          <CardHeader className="text-center">
+            <Store className="h-12 w-12 mx-auto text-primary mb-4" />
+            <CardTitle>Configura tu Negocio</CardTitle>
+            <p className="text-muted-foreground">
+              Para comenzar a publicar productos, necesitamos algunos datos de tu negocio
+            </p>
+          </CardHeader>
+          <CardContent>
+            <BusinessSetupForm 
+              onSuccess={(newBusiness) => {
+                toast.success("Negocio configurado correctamente");
+                // El business se creará automáticamente en el próximo render
+              }}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (businessLoading || productsLoading) {
+    return (
+      <div className="container py-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container py-8">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold">Mi panel</h1>
-          <p className="text-muted-foreground">Gestiona las publicaciones de <b>{user.business}</b></p>
+          <p className="text-muted-foreground">
+            Gestiona las publicaciones de <b>{businessName || business?.nombre_negocio}</b>
+          </p>
         </div>
-        <Button onClick={startNew} className="shadow-soft"><Plus className="h-4 w-4 mr-1.5" />Publicar producto</Button>
+        <Button onClick={handleCreateProduct} className="shadow-soft">
+          <Plus className="h-4 w-4 mr-1.5" />
+          Publicar producto
+        </Button>
       </div>
 
-      {open && (
-        <Card className="mb-8 border-primary/30 shadow-soft">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>{editing ? "Editar publicación" : "Nueva publicación"}</CardTitle>
-            <Button variant="ghost" size="icon" onClick={() => setOpen(false)}><X className="h-4 w-4" /></Button>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={submit} className="grid sm:grid-cols-2 gap-4">
-              <div><Label>Nombre del producto</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-              <div>
-                <Label>Categoría</Label>
-                <select className="w-full h-10 px-3 rounded-md border border-input bg-background" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
-                  {categories.map((c) => <option key={c}>{c}</option>)}
-                </select>
-              </div>
-              <div className="sm:col-span-2"><Label>Imagen (URL)</Label><Input value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} placeholder="https://…" /></div>
-              <div className="sm:col-span-2"><Label>Descripción</Label><Textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
-              <div><Label>Precio (COP)</Label><Input type="number" value={form.price} onChange={(e) => setForm({ ...form, price: +e.target.value })} /></div>
-              <div><Label>Descuento (%)</Label><Input type="number" value={form.discount} onChange={(e) => setForm({ ...form, discount: +e.target.value })} /></div>
-              <div><Label>Ubicación</Label><Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} /></div>
-              <div><Label>Fecha</Label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></div>
-              <Button type="submit" className="sm:col-span-2"><Save className="h-4 w-4 mr-1.5" />Guardar</Button>
-            </form>
-          </CardContent>
-        </Card>
+      {showForm && (
+        <ProductForm
+          product={editingProduct || undefined}
+          business_id={business?.id || ""}
+          onSuccess={handleFormSuccess}
+          onCancel={handleFormCancel}
+        />
       )}
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {mine.map((p) => (
-          <Card key={p.id} className="overflow-hidden">
+        {products.map((product) => (
+          <Card key={product.id} className="overflow-hidden">
             <div className="aspect-video bg-muted overflow-hidden">
-              {p.image && <img src={p.image} alt={p.name} className="w-full h-full object-cover" />}
+              {product.imagen_url ? (
+                <img 
+                  src={product.imagen_url} 
+                  alt={product.nombre} 
+                  className="w-full h-full object-cover" 
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <ImageIcon className="h-8 w-8 text-muted-foreground/50" />
+                </div>
+              )}
             </div>
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-1">
-                <Badge variant="secondary">{p.category}</Badge>
-                {p.discount > 0 && <Badge className="bg-accent text-accent-foreground">-{p.discount}%</Badge>}
+                <Badge variant="secondary">{product.category.nombre_categoria}</Badge>
+                {product.descuento && product.descuento > 0 && (
+                  <Badge className="bg-accent text-accent-foreground">
+                    -{product.descuento}%
+                  </Badge>
+                )}
               </div>
-              <h3 className="font-semibold">{p.name}</h3>
-              <p className="text-sm text-primary font-bold mt-1">${p.price.toLocaleString("es-CO")}</p>
+              <h3 className="font-semibold">{product.nombre}</h3>
+              <p className="text-sm text-primary font-bold mt-1">
+                ${product.precio.toLocaleString("es-CO")}
+              </p>
+              {product.descuento && product.descuento > 0 && (
+                <p className="text-xs text-muted-foreground line-through">
+                  ${(product.precio * (1 + product.descuento / 100)).toLocaleString("es-CO")}
+                </p>
+              )}
               <div className="flex gap-2 mt-3">
-                <Button size="sm" variant="outline" onClick={() => startEdit(p)} className="flex-1"><Pencil className="h-3.5 w-3.5 mr-1.5" />Editar</Button>
-                <Button size="sm" variant="outline" onClick={() => { deleteProduct(p.id); toast.success("Eliminada"); }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => handleEditProduct(product)} 
+                  className="flex-1"
+                >
+                  <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                  Editar
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => handleDeleteProduct(product.id)}
+                  disabled={deleteProduct.isPending}
+                >
+                  {deleteProduct.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5" />
+                  )}
+                </Button>
               </div>
             </CardContent>
           </Card>
         ))}
-        {mine.length === 0 && (
+        {products.length === 0 && (
           <div className="col-span-full text-center py-16 border-2 border-dashed rounded-xl">
             <p className="text-muted-foreground mb-3">Aún no tienes publicaciones.</p>
-            <Button onClick={startNew}><Plus className="h-4 w-4 mr-1.5" />Crear la primera</Button>
+            <Button onClick={handleCreateProduct}>
+              <Plus className="h-4 w-4 mr-1.5" />
+              Crear la primera
+            </Button>
           </div>
         )}
       </div>
