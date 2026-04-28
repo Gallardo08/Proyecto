@@ -7,11 +7,12 @@
 -- PASO 1 — DDL (Tipos y tablas)
 -- -----------------------------------------------------------------------------
 
-CREATE TYPE public.user_role AS ENUM ('admin', 'emprendedor');
-CREATE TYPE public.profile_estado AS ENUM ('activo', 'bloqueado', 'pendiente');
-CREATE TYPE public.product_estado_vigencia AS ENUM ('vigente', 'expirado');
+-- Tipos (omitidos si ya existen)
+-- CREATE TYPE public.user_role AS ENUM ('admin', 'emprendedor');
+-- CREATE TYPE public.profile_estado AS ENUM ('activo', 'bloqueado', 'pendiente');
+-- CREATE TYPE public.product_estado_vigencia AS ENUM ('vigente', 'expirado');
 
-CREATE TABLE public.profiles (
+CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users (id) ON DELETE CASCADE,
   rol public.user_role NOT NULL DEFAULT 'emprendedor',
   estado public.profile_estado NOT NULL DEFAULT 'pendiente',
@@ -19,10 +20,10 @@ CREATE TABLE public.profiles (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_profiles_rol ON public.profiles (rol);
-CREATE INDEX idx_profiles_estado ON public.profiles (estado);
+CREATE INDEX IF NOT EXISTS idx_profiles_rol ON public.profiles (rol);
+CREATE INDEX IF NOT EXISTS idx_profiles_estado ON public.profiles (estado);
 
-CREATE TABLE public.businesses (
+CREATE TABLE IF NOT EXISTS public.businesses (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   profile_id UUID NOT NULL UNIQUE REFERENCES public.profiles (id) ON DELETE CASCADE,
   nombre_negocio TEXT NOT NULL,
@@ -36,16 +37,16 @@ CREATE TABLE public.businesses (
   CONSTRAINT chk_nombre_negocio_not_blank CHECK (length(trim(nombre_negocio)) > 0)
 );
 
-CREATE INDEX idx_businesses_profile_id ON public.businesses (profile_id);
+CREATE INDEX IF NOT EXISTS idx_businesses_profile_id ON public.businesses (profile_id);
 
-CREATE TABLE public.categories (
+CREATE TABLE IF NOT EXISTS public.categories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nombre_categoria TEXT NOT NULL UNIQUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT chk_nombre_categoria_not_blank CHECK (length(trim(nombre_categoria)) > 0)
 );
 
-CREATE TABLE public.products (
+CREATE TABLE IF NOT EXISTS public.products (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   business_id UUID NOT NULL REFERENCES public.businesses (id) ON DELETE CASCADE,
   category_id UUID NOT NULL REFERENCES public.categories (id) ON DELETE RESTRICT,
@@ -57,15 +58,14 @@ CREATE TABLE public.products (
   fecha_publicacion TIMESTAMPTZ NOT NULL DEFAULT now(),
   estado_vigencia public.product_estado_vigencia NOT NULL DEFAULT 'vigente',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  CONSTRAINT chk_nombre_producto CHECK (length(trim(nombre)) > 0)
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_products_business ON public.products (business_id);
-CREATE INDEX idx_products_category ON public.products (category_id);
-CREATE INDEX idx_products_vigencia_pub ON public.products (estado_vigencia, fecha_publicacion DESC);
+CREATE INDEX IF NOT EXISTS idx_products_business ON public.products (business_id);
+CREATE INDEX IF NOT EXISTS idx_products_category ON public.products (category_id);
+CREATE INDEX IF NOT EXISTS idx_products_vigencia_pub ON public.products (estado_vigencia, fecha_publicacion DESC);
 
-CREATE TABLE public.system_settings (
+CREATE TABLE IF NOT EXISTS public.system_settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -81,18 +81,22 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS tr_profiles_updated_at ON public.profiles;
 CREATE TRIGGER tr_profiles_updated_at
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
+DROP TRIGGER IF EXISTS tr_businesses_updated_at ON public.businesses;
 CREATE TRIGGER tr_businesses_updated_at
   BEFORE UPDATE ON public.businesses
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
+DROP TRIGGER IF EXISTS tr_products_updated_at ON public.products;
 CREATE TRIGGER tr_products_updated_at
   BEFORE UPDATE ON public.products
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
+DROP TRIGGER IF EXISTS tr_system_settings_updated_at ON public.system_settings;
 CREATE TRIGGER tr_system_settings_updated_at
   BEFORE UPDATE ON public.system_settings
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
@@ -296,6 +300,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
