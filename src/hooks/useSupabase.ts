@@ -1,13 +1,37 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase/client';
 import type { 
-  Product, 
   Category, 
   Business, 
   ProductWithRelations,
-  ProductFormData,
-  ApiResponse 
+  ProductFormData
 } from '@/types/database';
+
+type SupabaseErrorLike = {
+  message?: string;
+  code?: string;
+  details?: string;
+  hint?: string;
+};
+
+function getSupabaseErrorMessage(error: SupabaseErrorLike, fallback: string) {
+  const rawMessage = error.message || fallback;
+  const code = error.code ? ` (${error.code})` : "";
+
+  if (error.code === "42501" || /row-level security|rls/i.test(rawMessage)) {
+    return `Supabase bloqueó la operación por políticas RLS${code}. Verifica que el negocio pertenezca al usuario autenticado.`;
+  }
+
+  if (error.code === "23503") {
+    return `El negocio o la categoría seleccionada no existe${code}. Actualiza la página e intenta nuevamente.`;
+  }
+
+  if (error.code === "23502") {
+    return `Falta un dato obligatorio para guardar el producto${code}.`;
+  }
+
+  return `${rawMessage}${code}`;
+}
 
 // Hooks para Categorías
 export function useCategories() {
@@ -55,14 +79,23 @@ export function useProducts() {
   });
 }
 
-export function useProductsByBusiness(businessId: string) {
+export function useProductsByBusiness(businessId: string | undefined) {
   return useQuery({
     queryKey: ['products', 'business', businessId],
     queryFn: async () => {
+      if (!businessId) throw new Error('No se encontró el negocio del usuario');
+
       const { data, error } = await supabase
         .from('products')
         .select(`
           *,
+          business:businesses(
+            id,
+            nombre_negocio,
+            whatsapp,
+            ubicacion,
+            profile_id
+          ),
           category:categories(
             id,
             nombre_categoria
@@ -120,10 +153,10 @@ export function useUserBusiness() {
         .from('businesses')
         .select('*')
         .eq('profile_id', user.id)
-        .single();
+        .maybeSingle();
       
       if (error) throw error;
-      return data as Business;
+      return data as Business | null;
     }
   });
 }
@@ -134,7 +167,38 @@ export function useCreateProduct() {
   
   return useMutation({
     mutationFn: async (formData: ProductFormData & { business_id: string }) => {
-      // Primero subir la imagen si existe
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError) {
+        throw new Error(getSupabaseErrorMessage(userError, "No se pudo validar la sesión"));
+      }
+
+      if (!user) {
+        throw new Error("Debes iniciar sesión para publicar productos.");
+      }
+
+      const requestedBusinessId = formData.business_id?.trim();
+      const { data: business, error: businessError } = await supabase
+        .from('businesses')
+        .select('id')
+        .eq('profile_id', user.id)
+        .maybeSingle();
+
+      if (businessError) {
+        throw new Error(getSupabaseErrorMessage(businessError, "No se pudo consultar tu negocio"));
+      }
+
+      if (!business?.id) {
+        throw new Error("No tienes un negocio configurado. Configura tu negocio antes de publicar productos.");
+      }
+
+      if (requestedBusinessId && requestedBusinessId !== business.id) {
+        throw new Error("El negocio seleccionado no pertenece al usuario autenticado.");
+      }
+
       let imagen_url: string | undefined;
       
       if (formData.imagen) {
@@ -146,7 +210,9 @@ export function useCreateProduct() {
           .from('products-images')
           .upload(filePath, formData.imagen);
         
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          throw new Error(getSupabaseErrorMessage(uploadError, "No se pudo subir la imagen"));
+        }
         
         const { data: { publicUrl } } = supabase.storage
           .from('products-images')
@@ -155,27 +221,31 @@ export function useCreateProduct() {
         imagen_url = publicUrl;
       }
       
-      // Crear el producto
       const { data, error } = await supabase
         .from('products')
         .insert({
-          business_id: formData.business_id,
+          business_id: business.id,
           category_id: formData.category_id,
-          nombre: formData.nombre,
-          descripcion: formData.descripcion,
+          nombre: formData.nombre.trim(),
+          descripcion: formData.descripcion?.trim() || null,
           precio: formData.precio,
           descuento: formData.descuento,
-          imagen_url
+          imagen_url,
+          estado_vigencia: 'vigente'
         })
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        throw new Error(getSupabaseErrorMessage(error, "No se pudo crear el producto"));
+      }
+
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
-      queryClient.invalidateQueries({ queryKey: ['products', 'business'] });
+      queryClient.invalidateQueries({ queryKey: ['products', 'business', variables.business_id] });
+      queryClient.invalidateQueries({ queryKey: ['user-business'] });
     }
   });
 }
@@ -203,7 +273,9 @@ export function useUpdateProduct() {
           .from('products-images')
           .upload(filePath, updates.imagen);
         
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          throw new Error(getSupabaseErrorMessage(uploadError, "No se pudo subir la imagen"));
+        }
         
         const { data: { publicUrl } } = supabase.storage
           .from('products-images')
@@ -216,18 +288,21 @@ export function useUpdateProduct() {
       const { data, error } = await supabase
         .from('products')
         .update({
-          category_id: updates.category_id,
-          nombre: updates.nombre,
-          descripcion: updates.descripcion,
-          precio: updates.precio,
-          descuento: updates.descuento,
+          ...(updates.category_id && { category_id: updates.category_id }),
+          ...(updates.nombre !== undefined && { nombre: updates.nombre.trim() }),
+          ...(updates.descripcion !== undefined && { descripcion: updates.descripcion?.trim() || null }),
+          ...(updates.precio !== undefined && { precio: updates.precio }),
+          ...(updates.descuento !== undefined && { descuento: updates.descuento }),
           ...(imagen_url && { imagen_url })
         })
         .eq('id', id)
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        throw new Error(getSupabaseErrorMessage(error, "No se pudo actualizar el producto"));
+      }
+
       return data;
     },
     onSuccess: () => {
@@ -247,7 +322,10 @@ export function useDeleteProduct() {
         .delete()
         .eq('id', id);
       
-      if (error) throw error;
+      if (error) {
+        throw new Error(getSupabaseErrorMessage(error, "No se pudo eliminar el producto"));
+      }
+
       return id;
     },
     onSuccess: () => {
@@ -274,7 +352,9 @@ export function useGetOrCreateBusiness() {
         .from('businesses')
         .select('*')
         .eq('profile_id', user.id)
-        .single();
+        .maybeSingle();
+
+      if (fetchError) throw fetchError;
       
       if (existingBusiness) return existingBusiness;
       

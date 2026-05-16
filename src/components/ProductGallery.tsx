@@ -7,9 +7,10 @@ import type { ProductWithRelations } from "@/types/database";
 interface ProductGalleryProps {
   products: ProductWithRelations[];
   loading?: boolean;
+  errorMessage?: string;
 }
 
-export default function ProductGallery({ products, loading }: ProductGalleryProps) {
+export default function ProductGallery({ products, loading, errorMessage }: ProductGalleryProps) {
   if (loading) {
     return (
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -23,6 +24,18 @@ export default function ProductGallery({ products, loading }: ProductGalleryProp
             </CardContent>
           </Card>
         ))}
+      </div>
+    );
+  }
+
+  if (errorMessage) {
+    return (
+      <div className="text-center py-16">
+        <div className="inline-flex items-center justify-center w-16 h-16 bg-destructive/10 rounded-full mb-4">
+          <Store className="h-8 w-8 text-destructive" />
+        </div>
+        <h3 className="text-lg font-semibold mb-2">No se pudo cargar el catalogo</h3>
+        <p className="text-muted-foreground max-w-xl mx-auto">{errorMessage}</p>
       </div>
     );
   }

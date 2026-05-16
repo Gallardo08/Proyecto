@@ -1,5 +1,4 @@
 import { useState, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,6 +27,7 @@ export default function ProductForm({ product, business_id, onSuccess, onCancel 
   const { data: categories = [] } = useCategories();
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
+  const isSaving = isSubmitting || createProduct.isPending || updateProduct.isPending;
 
   const [formData, setFormData] = useState<ProductFormData>({
     nombre: product?.nombre || "",
@@ -100,9 +100,14 @@ export default function ProductForm({ product, business_id, onSuccess, onCancel 
         return;
       }
 
+      if (!business_id?.trim()) {
+        toast.error("No se encontró tu negocio. Actualiza la página o vuelve a iniciar sesión.");
+        return;
+      }
+
       const submitData = {
         ...formData,
-        business_id
+        business_id: business_id.trim()
       };
 
       if (product) {
@@ -119,7 +124,7 @@ export default function ProductForm({ product, business_id, onSuccess, onCancel 
       onSuccess?.();
     } catch (error) {
       console.error("Error guardando producto:", error);
-      toast.error("Error al guardar el producto. Intenta nuevamente.");
+      toast.error(error instanceof Error ? error.message : "Error al guardar el producto. Intenta nuevamente.");
     } finally {
       setIsSubmitting(false);
     }
@@ -156,6 +161,7 @@ export default function ProductForm({ product, business_id, onSuccess, onCancel 
                     size="icon"
                     className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={removeImage}
+                    disabled={isSaving}
                   >
                     <X className="h-3 w-3" />
                   </Button>
@@ -164,6 +170,7 @@ export default function ProductForm({ product, business_id, onSuccess, onCancel 
                 <div
                   className="w-24 h-24 border-2 border-dashed border-muted-foreground/25 rounded-lg flex items-center justify-center cursor-pointer hover:border-muted-foreground/50 transition-colors"
                   onClick={() => fileInputRef.current?.click()}
+                  aria-disabled={isSaving}
                 >
                   <ImageIcon className="h-8 w-8 text-muted-foreground/50" />
                 </div>
@@ -174,6 +181,7 @@ export default function ProductForm({ product, business_id, onSuccess, onCancel 
                   variant="outline"
                   onClick={() => fileInputRef.current?.click()}
                   className="w-full"
+                  disabled={isSaving}
                 >
                   <Upload className="h-4 w-4 mr-2" />
                   {previewImage ? "Cambiar Imagen" : "Subir Imagen"}
@@ -189,6 +197,7 @@ export default function ProductForm({ product, business_id, onSuccess, onCancel 
               accept="image/*"
               onChange={handleImageChange}
               className="hidden"
+              disabled={isSaving}
             />
           </div>
 
@@ -201,6 +210,7 @@ export default function ProductForm({ product, business_id, onSuccess, onCancel 
               onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
               placeholder="Ej: Hamburguesa Artesanal"
               required
+              disabled={isSaving}
             />
           </div>
 
@@ -210,6 +220,7 @@ export default function ProductForm({ product, business_id, onSuccess, onCancel 
             <Select
               value={formData.category_id}
               onValueChange={(value) => setFormData({ ...formData, category_id: value })}
+              disabled={isSaving}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecciona una categoría" />
@@ -233,6 +244,7 @@ export default function ProductForm({ product, business_id, onSuccess, onCancel 
               onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
               placeholder="Describe tu producto, ingredientes, características, etc."
               rows={3}
+              disabled={isSaving}
             />
           </div>
 
@@ -249,6 +261,7 @@ export default function ProductForm({ product, business_id, onSuccess, onCancel 
                 onChange={(e) => setFormData({ ...formData, precio: Number(e.target.value) })}
                 placeholder="18000"
                 required
+                disabled={isSaving}
               />
             </div>
             <div className="space-y-2">
@@ -261,6 +274,7 @@ export default function ProductForm({ product, business_id, onSuccess, onCancel 
                 value={formData.descuento}
                 onChange={(e) => setFormData({ ...formData, descuento: Number(e.target.value) })}
                 placeholder="0"
+                disabled={isSaving}
               />
             </div>
           </div>
@@ -285,9 +299,9 @@ export default function ProductForm({ product, business_id, onSuccess, onCancel 
             <Button
               type="submit"
               className="flex-1"
-              disabled={isSubmitting}
+              disabled={isSaving}
             >
-              {isSubmitting ? (
+              {isSaving ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Guardando...
@@ -300,7 +314,7 @@ export default function ProductForm({ product, business_id, onSuccess, onCancel 
               )}
             </Button>
             {onCancel && (
-              <Button type="button" variant="outline" onClick={onCancel}>
+              <Button type="button" variant="outline" onClick={onCancel} disabled={isSaving}>
                 Cancelar
               </Button>
             )}

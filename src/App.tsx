@@ -13,6 +13,7 @@ import Recover from "./pages/Recover";
 import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
 import UseCases from "./pages/UseCases";
+import AuthCallback from "./pages/AuthCallback";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/registro" element={<Register />} />
             <Route path="/recuperar" element={<Recover />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/casos-de-uso" element={<UseCases />} />
             
             {/* Rutas protegidas */}

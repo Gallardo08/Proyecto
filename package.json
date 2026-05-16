@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "node ./node_modules/vite/bin/vite.js build",
-    "build:dev": "node ./node_modules/vite/bin/vite.js build --mode development",
+    "dev": "node ./scripts/vite-dev.mjs",
+    "build": "node ./scripts/vite-build.mjs",
+    "build:dev": "node ./scripts/vite-build.mjs --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",

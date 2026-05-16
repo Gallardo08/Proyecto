@@ -7,12 +7,19 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Pencil, Loader2, Store, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { useUserBusiness, useProductsByBusiness, useDeleteProduct } from "@/hooks/useSupabase";
+import { useUserBusiness, useProductsByBusiness, useDeleteProduct, useGetOrCreateBusiness } from "@/hooks/useSupabase";
 import ProductForm from "@/components/ProductForm";
 import type { ProductWithRelations } from "@/types/database";
 
 // Componente para configurar negocio
-function BusinessSetupForm({ onSuccess }: { onSuccess: (data: any) => void }) {
+type BusinessSetupData = {
+  nombre_negocio: string;
+  whatsapp: string;
+  ubicacion?: string;
+  descripcion?: string;
+};
+
+function BusinessSetupForm({ onSuccess }: { onSuccess: (data: BusinessSetupData) => Promise<void> }) {
   const [formData, setFormData] = useState({
     nombre_negocio: "",
     whatsapp: "",
@@ -28,8 +35,11 @@ function BusinessSetupForm({ onSuccess }: { onSuccess: (data: any) => void }) {
       return;
     }
     setLoading(true);
-    onSuccess(formData);
-    setLoading(false);
+    try {
+      await onSuccess(formData);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -86,10 +96,11 @@ function BusinessSetupForm({ onSuccess }: { onSuccess: (data: any) => void }) {
 
 export default function Dashboard() {
   const user = useCurrentUser();
-  const { user: authUser, businessName } = useAuth();
-  const { data: business, isLoading: businessLoading } = useUserBusiness();
-  const { data: products = [], isLoading: productsLoading, refetch: refetchProducts } = useProductsByBusiness(business?.id || "");
+  const { businessName } = useAuth();
+  const { data: business, isLoading: businessLoading, refetch: refetchBusiness } = useUserBusiness();
+  const { data: products = [], isLoading: productsLoading, refetch: refetchProducts } = useProductsByBusiness(business?.id);
   const deleteProduct = useDeleteProduct();
+  const getOrCreateBusiness = useGetOrCreateBusiness();
 
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductWithRelations | null>(null);
@@ -141,9 +152,14 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <BusinessSetupForm 
-              onSuccess={(newBusiness) => {
-                toast.success("Negocio configurado correctamente");
-                // El business se creará automáticamente en el próximo render
+              onSuccess={async (newBusiness) => {
+                try {
+                  await getOrCreateBusiness.mutateAsync(newBusiness);
+                  await refetchBusiness();
+                  toast.success("Negocio configurado correctamente");
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : "No se pudo configurar el negocio");
+                }
               }}
             />
           </CardContent>

@@ -11,16 +11,17 @@ import ProductGallery from "@/components/ProductGallery";
 import type { ProductWithRelations } from "@/types/database";
 
 export default function Home() {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(""); 
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   // Obtener productos según la categoría seleccionada
-  const { data: allProducts = [], isLoading: allLoading } = useProducts();
-  const { data: categoryProducts = [], isLoading: categoryLoading } = useProductsByCategory(selectedCategory || "");
+  const { data: allProducts = [], isLoading: allLoading, error: allError } = useProducts();
+  const { data: categoryProducts = [], isLoading: categoryLoading, error: categoryError } = useProductsByCategory(selectedCategory || "");
 
   // Determinar qué productos mostrar
   const products = selectedCategory ? categoryProducts : allProducts;
   const loading = selectedCategory ? categoryLoading : allLoading;
+  const error = selectedCategory ? categoryError : allError;
 
   // Filtrar por búsqueda
   const filteredProducts = useMemo(() => {
@@ -131,6 +132,7 @@ export default function Home() {
         <ProductGallery 
           products={filteredProducts} 
           loading={loading}
+          errorMessage={error instanceof Error ? error.message : undefined}
         />
 
         {/* Resultados de búsqueda */}
