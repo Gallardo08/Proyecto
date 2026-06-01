@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { Store, BookOpen, LogIn, UserPlus, LayoutDashboard, ShieldCheck, LogOut } from "lucide-react";
+import { Store, LogIn, UserPlus, LayoutDashboard, ShieldCheck, LogOut } from "lucide-react";
 import { useApp, useCurrentUser } from "@/store/app";
 import { supabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { to: "/", label: "Inicio", icon: Store },
-  { to: "/casos-de-uso", label: "Casos de uso", icon: BookOpen },
 ];
 
 export default function Layout() {
