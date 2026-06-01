@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { Store, BookOpen, LogIn, UserPlus, LayoutDashboard, ShieldCheck, LogOut } from "lucide-react";
 import { useApp, useCurrentUser } from "@/store/app";
@@ -14,9 +15,28 @@ export default function Layout() {
   const user = useCurrentUser();
   const logout = useApp((s) => s.logout);
   const { pathname } = useLocation();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT" || !session) {
+        logout();
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [logout]);
+
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    setIsLoggingOut(true);
     logout();
+    const { error } = await supabase.auth.signOut({ scope: "local" });
+    if (error) {
+      console.error("Error cerrando sesion:", error);
+    }
+    setIsLoggingOut(false);
   };
 
   return (
@@ -59,7 +79,9 @@ export default function Layout() {
                   </Button>
                 )}
                 <span className="hidden sm:inline text-sm text-muted-foreground">Hola, <b className="text-foreground">{user.name.split(" ")[0]}</b></span>
-                <Button variant="outline" size="sm" onClick={handleLogout}><LogOut className="h-4 w-4" /></Button>
+                <Button variant="outline" size="sm" onClick={handleLogout} disabled={isLoggingOut}>
+                  <LogOut className="h-4 w-4" />
+                </Button>
               </>
             ) : (
               <>
