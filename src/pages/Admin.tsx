@@ -9,6 +9,18 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Ban, Check, ChevronRight, MessageCircle, Plus, Save, Settings, ShieldCheck, Users } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useCategories, useCreateCategory } from "@/hooks/useSupabase";
 
 const adminSections = [
   { id: "cuentas", label: "Cuentas", icon: Users },
@@ -20,7 +32,9 @@ type AdminSection = (typeof adminSections)[number]["id"];
 
 export default function Admin() {
   const user = useCurrentUser();
-  const { users, setUserStatus, categories, addCategory, officialWhatsapp, setOfficialWhatsapp } = useApp();
+  const { users, setUserStatus, officialWhatsapp, setOfficialWhatsapp } = useApp();
+  const { data: categories = [] } = useCategories();
+  const createCategory = useCreateCategory();
   const [active, setActive] = useState<AdminSection>("cuentas");
   const [newCat, setNewCat] = useState("");
   const [waNumber, setWaNumber] = useState(officialWhatsapp);
@@ -28,7 +42,7 @@ export default function Admin() {
   if (!user) return <Navigate to="/login" replace />;
   if (user.role !== "admin") return <Navigate to="/" replace />;
 
-  const emprendedores = users.filter((u) => u.role === "emprendedor");
+  const emprendedores = users.filter((u) => u.role === "emprendedor" && u.status === "pendiente");
   const activeSection = adminSections.find((section) => section.id === active)!;
 
   return (
@@ -98,17 +112,33 @@ export default function Admin() {
                         <Check className="h-3.5 w-3.5 mr-1" />
                         Activar
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setUserStatus(u.id, "bloqueado");
-                          toast.success("Cuenta bloqueada");
-                        }}
-                      >
-                        <Ban className="h-3.5 w-3.5 mr-1" />
-                        Bloquear
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button size="sm" variant="outline">
+                            <Ban className="h-3.5 w-3.5 mr-1" />
+                            Bloquear
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta acción bloqueará la cuenta de {u.name} y no podrá acceder a la plataforma.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => {
+                                setUserStatus(u.id, "bloqueado");
+                                toast.success("Cuenta bloqueada");
+                              }}
+                            >
+                              Bloquear
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
                 ))}
@@ -124,8 +154,8 @@ export default function Admin() {
                   <h3 className="font-semibold mb-3">Categorias</h3>
                     <div className="flex flex-wrap gap-2 mb-4">
                       {categories.map((c) => (
-                        <Badge key={c} variant="secondary">
-                          {c}
+                        <Badge key={c.id} variant="secondary">
+                          {c.nombre_categoria}
                         </Badge>
                       ))}
                     </div>
@@ -134,10 +164,17 @@ export default function Admin() {
                       <Button
                         onClick={() => {
                           if (!newCat) return;
-                          addCategory(newCat);
-                          setNewCat("");
-                          toast.success("Categoria creada");
+                          createCategory.mutate(newCat, {
+                            onSuccess: () => {
+                              setNewCat("");
+                              toast.success("Categoria creada");
+                            },
+                            onError: (error) => {
+                              toast.error(error.message);
+                            }
+                          });
                         }}
+                        disabled={createCategory.isPending}
                       >
                         <Plus className="h-4 w-4" />
                       </Button>

@@ -49,6 +49,26 @@ export function useCategories() {
   });
 }
 
+export function useCreateCategory() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (nombre_categoria: string) => {
+      const { data, error } = await supabase
+        .from('categories')
+        .insert({ nombre_categoria: nombre_categoria.trim() })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+    }
+  });
+}
+
 // Hooks para Products
 export function useProducts() {
   return useQuery({
