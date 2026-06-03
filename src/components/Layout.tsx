@@ -87,9 +87,6 @@ export default function Layout() {
                 <Button asChild variant="ghost" size="sm">
                   <Link to="/login"><LogIn className="h-4 w-4 mr-1.5" />Iniciar sesión</Link>
                 </Button>
-                <Button asChild size="sm" className="shadow-soft">
-                  <Link to="/registro"><UserPlus className="h-4 w-4 mr-1.5" />Crear cuenta</Link>
-                </Button>
               </>
             )}
           </div>
