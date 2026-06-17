@@ -19,7 +19,7 @@ export default function Home() {
     error: categoryError,
   } = useProductsByCategory(selectedCategory || "");
 
-  const products = selectedCategory ? categoryProducts : allProducts;
+  const products = selectedCategory ? categorsyProducts : allProducts;
   const loading = selectedCategory ? categoryLoading : allLoading;
   const error = selectedCategory ? categoryError : allError;
 
@@ -68,26 +68,28 @@ export default function Home() {
       </section>
 
       <section id="catalogo" className="container py-12">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
-          <div>
-            <h2 className="text-2xl md:text-3xl font-bold">Catálogo de negocios</h2>
-            <p className="text-muted-foreground">
-              Explora publicaciones de emprendedores ocañeros.
-            </p>
+        <div className="sticky top-16 z-30 mb-6 rounded-3xl border border-border/60 bg-background/95 p-6 shadow-soft backdrop-blur">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+              <h2 className="text-2xl md:text-3xl font-bold">Catálogo de negocios</h2>
+              <p className="text-muted-foreground">
+                Explora publicaciones de emprendedores ocañeros.
+              </p>
+            </div>
+            <div className="relative w-full md:w-80">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar negocio o producto..."
+                className="pl-9"
+              />
+            </div>
           </div>
-          <div className="relative w-full md:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar negocio o producto..."
-              className="pl-9"
-            />
-          </div>
-        </div>
 
-        <div className="mb-8">
-          <CategoryFilter selectedCategory={selectedCategory} onCategoryChange={setSelectedCategory} />
+          <div className="mt-6">
+            <CategoryFilter selectedCategory={selectedCategory} onCategoryChange={setSelectedCategory} />
+          </div>
         </div>
 
         <ProductGallery
