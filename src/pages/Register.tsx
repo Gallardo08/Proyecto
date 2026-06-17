@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useApp } from "@/store/app";
 import { supabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +11,6 @@ const PENDING_ONBOARDING_KEY = "pending-onboarding";
 
 export default function Register() {
   const navigate = useNavigate();
-  const setCurrentUserFromSupabase = useApp((s) => s.setCurrentUserFromSupabase);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [form, setForm] = useState({
@@ -77,18 +75,6 @@ export default function Register() {
       setIsSubmitting(false);
       return toast.error(`Cuenta creada, pero falló crear el negocio: ${businessError.message}`);
     }
-
-    setCurrentUserFromSupabase({
-      id: data.user.id,
-      name: form.name,
-      email: form.email,
-      whatsapp: form.whatsapp,
-      business: form.business,
-      location: form.location,
-      role: "emprendedor",
-      status: "pendiente",
-      avatar: undefined,
-    });
 
     toast.success("Cuenta creada con éxito 🎉");
     navigate("/panel");

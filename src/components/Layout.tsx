@@ -1,39 +1,23 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { Store, LogIn, UserPlus, LayoutDashboard, ShieldCheck, LogOut } from "lucide-react";
-import { useApp, useCurrentUser } from "@/store/app";
-import { supabase } from "@/lib/supabase/client";
+import { Store, LogIn, LayoutDashboard, ShieldCheck, LogOut } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const navItems = [
-  { to: "/", label: "Inicio", icon: Store },
-];
+const navItems: Array<{ to: string; label: string; icon: typeof Store }> = [];
 
 export default function Layout() {
-  const user = useCurrentUser();
-  const logout = useApp((s) => s.logout);
+  const { user, signOut, userMetadata } = useAuth();
   const { pathname } = useLocation();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_OUT" || !session) {
-        logout();
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [logout]);
-
   const handleLogout = async () => {
     setIsLoggingOut(true);
-    logout();
-    const { error } = await supabase.auth.signOut({ scope: "local" });
-    if (error) {
-      console.error("Error cerrando sesion:", error);
+    try {
+      await signOut();
+    } catch (error) {
+      console.error("Error cerrando sesión:", error);
     }
     setIsLoggingOut(false);
   };
@@ -67,17 +51,17 @@ export default function Layout() {
           <div className="ml-auto flex items-center gap-2">
             {user ? (
               <>
-                {user.role === "emprendedor" && (
+                {userMetadata.role === "emprendedor" && (
                   <Button asChild variant="ghost" size="sm">
                     <Link to="/panel"><LayoutDashboard className="h-4 w-4 mr-1.5" />Panel</Link>
                   </Button>
                 )}
-                {user.role === "admin" && (
+                {userMetadata.role === "admin" && (
                   <Button asChild variant="ghost" size="sm">
                     <Link to="/admin"><ShieldCheck className="h-4 w-4 mr-1.5" />Admin</Link>
                   </Button>
                 )}
-                <span className="hidden sm:inline text-sm text-muted-foreground">Hola, <b className="text-foreground">{user.name.split(" ")[0]}</b></span>
+                <span className="hidden sm:inline text-sm text-muted-foreground">Hola, <b className="text-foreground">{userMetadata.name?.split(" ")[0] ?? "Usuario"}</b></span>
                 <Button variant="outline" size="sm" onClick={handleLogout} disabled={isLoggingOut}>
                   <LogOut className="h-4 w-4" />
                 </Button>

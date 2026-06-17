@@ -4,13 +4,11 @@ import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase/client";
-import { useApp } from "@/store/app";
 
 type CallbackState = "loading" | "success" | "error";
 
 export default function AuthCallback() {
   const navigate = useNavigate();
-  const setCurrentUserFromSupabase = useApp((s) => s.setCurrentUserFromSupabase);
   const [state, setState] = useState<CallbackState>("loading");
   const [message, setMessage] = useState("Confirmando tu correo...");
 
@@ -70,18 +68,6 @@ export default function AuthCallback() {
           session.user.email?.split("@")[0] ||
           "Usuario";
 
-        setCurrentUserFromSupabase({
-          id: session.user.id,
-          name,
-          email: session.user.email ?? "",
-          whatsapp: business?.whatsapp ?? "",
-          business: business?.nombre_negocio,
-          location: business?.ubicacion,
-          avatar: business?.foto_perfil_url,
-          role: profile.rol,
-          status: profile.estado,
-        });
-
         const destination = profile.rol === "admin" ? "/admin" : "/panel";
 
         if (!isMounted) return;
@@ -102,7 +88,7 @@ export default function AuthCallback() {
     return () => {
       isMounted = false;
     };
-  }, [navigate, setCurrentUserFromSupabase]);
+  }, [navigate]);
 
   return (
     <div className="container flex min-h-[70vh] items-center justify-center py-12">

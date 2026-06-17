@@ -4,7 +4,11 @@ import type {
   Category, 
   Business, 
   ProductWithRelations,
-  ProductFormData
+  ProductFormData,
+  Profile,
+  SystemSetting,
+  UserRole,
+  ProfileEstado,
 } from '@/types/database';
 
 type SupabaseErrorLike = {
@@ -391,5 +395,94 @@ export function useGetOrCreateBusiness() {
       if (error) throw error;
       return data;
     }
+  });
+}
+
+export function useProfiles(role?: UserRole, status?: ProfileEstado) {
+  return useQuery({
+    queryKey: ['profiles', role, status],
+    queryFn: async () => {
+      let query = supabase.from('profiles').select('*');
+      if (role) query = query.eq('rol', role);
+      if (status) query = query.eq('estado', status);
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data as Profile[];
+    },
+  });
+}
+
+export function useUpdateProfileStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: ProfileEstado }) => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ estado: status })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as Profile;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profiles'] });
+      queryClient.invalidateQueries({ queryKey: ['profiles', 'emprendedor', 'pendiente'] });
+    },
+  });
+}
+
+export function useOfficialWhatsapp() {
+  return useQuery({
+    queryKey: ['system-settings', 'official_whatsapp'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'official_whatsapp')
+        .maybeSingle();
+
+      if (error) throw error;
+      return data?.value ?? '';
+    },
+  });
+}
+
+export function usePendingEntrepreneurs() {
+  return useQuery({
+    queryKey: ['pending-entrepreneurs'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('businesses')
+        .select(`*, profile:profiles(*)`)
+        .eq('profile.rol', 'emprendedor')
+        .eq('profile.estado', 'pendiente');
+
+      if (error) throw error;
+      return data as BusinessWithProfile[];
+    },
+  });
+}
+
+export function useUpdateSystemSetting() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ key, value }: { key: string; value: string }) => {
+      const { data, error } = await supabase
+        .from('system_settings')
+        .upsert({ key, value })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as SystemSetting;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['system-settings', variables.key] });
+    },
   });
 }

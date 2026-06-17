@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Navigate } from "react-router-dom";
-import { useApp, useCurrentUser } from "@/store/app";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -95,8 +94,7 @@ function BusinessSetupForm({ onSuccess }: { onSuccess: (data: BusinessSetupData)
 }
 
 export default function Dashboard() {
-  const user = useCurrentUser();
-  const { businessName } = useAuth();
+  const { user, loading, businessName } = useAuth();
   const { data: business, isLoading: businessLoading, refetch: refetchBusiness } = useUserBusiness();
   const { data: products = [], isLoading: productsLoading, refetch: refetchProducts } = useProductsByBusiness(business?.id);
   const deleteProduct = useDeleteProduct();
@@ -105,8 +103,18 @@ export default function Dashboard() {
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductWithRelations | null>(null);
 
+  if (loading) {
+    return (
+      <div className="container py-16 text-center">
+        <div className="inline-flex items-center justify-center rounded-full bg-muted p-5">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </div>
+    );
+  }
+
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== "emprendedor") return <Navigate to="/admin" replace />;
+  if (user.profile?.rol !== "emprendedor") return <Navigate to="/admin" replace />;
 
   const handleCreateProduct = () => {
     setEditingProduct(null);

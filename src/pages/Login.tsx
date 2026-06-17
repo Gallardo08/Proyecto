@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useApp } from "@/store/app";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +11,6 @@ const PENDING_ONBOARDING_KEY = "pending-onboarding";
 
 export default function Login() {
   const navigate = useNavigate();
-  const setCurrentUserFromSupabase = useApp((s) => s.setCurrentUserFromSupabase);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -113,19 +111,7 @@ export default function Login() {
       }
     }
 
-    const name = (data.user.user_metadata?.name as string) || fallbackName;
-    setCurrentUserFromSupabase({
-      id: userId,
-      name,
-      email: data.user.email ?? "",
-      whatsapp: business?.whatsapp ?? "",
-      business: business?.nombre_negocio,
-      location: business?.ubicacion,
-      role: profile.rol,
-      status: profile.estado,
-      avatar: undefined,
-    });
-
+      const name = (data.user.user_metadata?.name as string) || fallbackName;
     toast.success(`Bienvenido, ${name}`);
     navigate(profile.rol === "admin" ? "/admin" : "/panel");
     setIsSubmitting(false);

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Navigate } from "react-router-dom";
-import { useApp, useCurrentUser } from "@/store/app";
+import { useAuth } from "@/hooks/useAuth";
+import { useApp } from "@/store/app";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,7 +32,7 @@ const adminSections = [
 type AdminSection = (typeof adminSections)[number]["id"];
 
 export default function Admin() {
-  const user = useCurrentUser();
+  const { user, loading, isAdmin } = useAuth();
   const { users, setUserStatus, officialWhatsapp, setOfficialWhatsapp } = useApp();
   const { data: categories = [] } = useCategories();
   const createCategory = useCreateCategory();
@@ -39,8 +40,18 @@ export default function Admin() {
   const [newCat, setNewCat] = useState("");
   const [waNumber, setWaNumber] = useState(officialWhatsapp);
 
+  if (loading) {
+    return (
+      <div className="container py-16 text-center">
+        <div className="inline-flex items-center justify-center rounded-full bg-muted p-5">
+          <ShieldCheck className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </div>
+    );
+  }
+
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== "admin") return <Navigate to="/" replace />;
+  if (!isAdmin) return <Navigate to="/" replace />;
 
   const emprendedores = users.filter((u) => u.role === "emprendedor" && u.status === "pendiente");
   const activeSection = adminSections.find((section) => section.id === active)!;
