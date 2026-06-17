@@ -210,76 +210,82 @@ export default function Dashboard() {
         />
       )}
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {products.map((product) => (
-          <Card key={product.id} className="overflow-hidden">
-            <div className="aspect-video bg-muted overflow-hidden">
-              {product.imagen_url ? (
-                <img 
-                  src={product.imagen_url} 
-                  alt={product.nombre} 
-                  className="w-full h-full object-cover" 
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <ImageIcon className="h-8 w-8 text-muted-foreground/50" />
-                </div>
-              )}
-            </div>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <Badge variant="secondary">{product.category.nombre_categoria}</Badge>
-                {product.descuento && product.descuento > 0 && (
-                  <Badge className="bg-accent text-accent-foreground">
-                    -{product.descuento}%
-                  </Badge>
+      {!showForm && (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {products.map((product) => (
+            <Card key={product.id} className="overflow-hidden">
+              <div className="aspect-video bg-muted overflow-hidden">
+                {product.imagen_url ? (
+                  <img 
+                    src={product.imagen_url} 
+                    alt={product.nombre} 
+                    className="w-full h-full object-cover" 
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <ImageIcon className="h-8 w-8 text-muted-foreground/50" />
+                  </div>
                 )}
               </div>
-              <h3 className="font-semibold">{product.nombre}</h3>
-              <p className="text-sm text-primary font-bold mt-1">
-                ${product.precio.toLocaleString("es-CO")}
-              </p>
-              {product.descuento && product.descuento > 0 && (
-                <p className="text-xs text-muted-foreground line-through">
-                  ${(product.precio * (1 + product.descuento / 100)).toLocaleString("es-CO")}
-                </p>
-              )}
-              <div className="flex gap-2 mt-3">
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={() => handleEditProduct(product)} 
-                  className="flex-1"
-                >
-                  <Pencil className="h-3.5 w-3.5 mr-1.5" />
-                  Editar
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={() => handleDeleteProduct(product.id)}
-                  disabled={deleteProduct.isPending}
-                >
-                  {deleteProduct.isPending ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-3.5 w-3.5" />
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Badge variant="secondary">{product.category.nombre_categoria}</Badge>
+                  {product.descuento && product.descuento > 0 && (
+                    <Badge className="bg-accent text-accent-foreground">
+                      -{product.descuento}%
+                    </Badge>
                   )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-        {products.length === 0 && (
-          <div className="col-span-full text-center py-16 border-2 border-dashed rounded-xl">
-            <p className="text-muted-foreground mb-3">Aún no tienes publicaciones.</p>
-            <Button onClick={handleCreateProduct}>
-              <Plus className="h-4 w-4 mr-1.5" />
-              Crear la primera
-            </Button>
-          </div>
-        )}
-      </div>
+                </div>
+                <h3 className="font-semibold">{product.nombre}</h3>
+                <p className="text-sm text-primary font-bold mt-1">
+                  ${(
+                    product.descuento && product.descuento > 0
+                      ? product.precio * (1 - product.descuento / 100)
+                      : product.precio
+                  ).toLocaleString("es-CO")}
+                </p>
+                {product.descuento && product.descuento > 0 && (
+                  <p className="text-xs text-muted-foreground line-through">
+                    ${product.precio.toLocaleString("es-CO")}
+                  </p>
+                )}
+                <div className="flex gap-2 mt-3">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => handleEditProduct(product)} 
+                    className="flex-1"
+                  >
+                    <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                    Editar
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => handleDeleteProduct(product.id)}
+                    disabled={deleteProduct.isPending}
+                  >
+                    {deleteProduct.isPending ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+          {products.length === 0 && (
+            <div className="col-span-full text-center py-16 border-2 border-dashed rounded-xl">
+              <p className="text-muted-foreground mb-3">Aún no tienes publicaciones.</p>
+              <Button onClick={handleCreateProduct}>
+                <Plus className="h-4 w-4 mr-1.5" />
+                Crear la primera
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -119,11 +119,15 @@ export default function ProductGallery({ products, loading, errorMessage }: Prod
             {/* Precios */}
             <div className="flex items-center gap-2 mb-3">
               <span className="text-xl font-bold text-primary">
-                ${product.precio.toLocaleString("es-CO")}
+                ${(
+                  product.descuento && product.descuento > 0
+                    ? product.precio * (1 - product.descuento / 100)
+                    : product.precio
+                ).toLocaleString("es-CO")}
               </span>
               {product.descuento && product.descuento > 0 && (
                 <span className="text-sm text-muted-foreground line-through">
-                  ${(product.precio * (1 + product.descuento / 100)).toLocaleString("es-CO")}
+                  ${product.precio.toLocaleString("es-CO")}
                 </span>
               )}
             </div>
