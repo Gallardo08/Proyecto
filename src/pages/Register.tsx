@@ -103,12 +103,12 @@ export default function Register() {
               <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
             </div>
             <div>
-              <Label>WhatsApp (con código país)</Label>
-              <Input value={form.whatsapp} onChange={(e) => set("whatsapp", e.target.value)} placeholder="573001234567" />
+              <Label>WhatsApp</Label>
+              <Input value={form.whatsapp} onChange={(e) => set("whatsapp", e.target.value)} placeholder="Digite su numero cel" />
             </div>
             <div>
-              <Label>Ubicación</Label>
-              <Input value={form.location} onChange={(e) => set("location", e.target.value)} placeholder="Ocaña, N. Santander" />
+              <Label>Dirección</Label>
+              <Input value={form.location} onChange={(e) => set("location", e.target.value)} placeholder="Calle 10 # 5-20" />
             </div>
             <div className="sm:col-span-2">
               <Label>Contraseña</Label>
