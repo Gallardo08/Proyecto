@@ -7,11 +7,21 @@
 -- PASO 1 — DDL (Tipos y tablas)
 -- -----------------------------------------------------------------------------
 
-CREATE TYPE public.user_role AS ENUM ('admin', 'emprendedor');
-CREATE TYPE public.profile_estado AS ENUM ('activo', 'bloqueado', 'pendiente');
-CREATE TYPE public.product_estado_vigencia AS ENUM ('vigente', 'expirado');
+DO $$ BEGIN
+  CREATE TYPE public.user_role AS ENUM ('admin', 'emprendedor');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE TABLE public.profiles (
+DO $$ BEGIN
+  CREATE TYPE public.profile_estado AS ENUM ('activo', 'bloqueado', 'pendiente');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE public.product_estado_vigencia AS ENUM ('vigente', 'expirado');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users (id) ON DELETE CASCADE,
   rol public.user_role NOT NULL DEFAULT 'emprendedor',
   estado public.profile_estado NOT NULL DEFAULT 'pendiente',
@@ -19,10 +29,10 @@ CREATE TABLE public.profiles (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_profiles_rol ON public.profiles (rol);
-CREATE INDEX idx_profiles_estado ON public.profiles (estado);
+CREATE INDEX IF NOT EXISTS idx_profiles_rol ON public.profiles (rol);
+CREATE INDEX IF NOT EXISTS idx_profiles_estado ON public.profiles (estado);
 
-CREATE TABLE public.businesses (
+CREATE TABLE IF NOT EXISTS public.businesses (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   profile_id UUID NOT NULL UNIQUE REFERENCES public.profiles (id) ON DELETE CASCADE,
   nombre_negocio TEXT NOT NULL,
@@ -36,16 +46,16 @@ CREATE TABLE public.businesses (
   CONSTRAINT chk_nombre_negocio_not_blank CHECK (length(trim(nombre_negocio)) > 0)
 );
 
-CREATE INDEX idx_businesses_profile_id ON public.businesses (profile_id);
+CREATE INDEX IF NOT EXISTS idx_businesses_profile_id ON public.businesses (profile_id);
 
-CREATE TABLE public.categories (
+CREATE TABLE IF NOT EXISTS public.categories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nombre_categoria TEXT NOT NULL UNIQUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT chk_nombre_categoria_not_blank CHECK (length(trim(nombre_categoria)) > 0)
 );
 
-CREATE TABLE public.products (
+CREATE TABLE IF NOT EXISTS public.products (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   business_id UUID NOT NULL REFERENCES public.businesses (id) ON DELETE CASCADE,
   category_id UUID NOT NULL REFERENCES public.categories (id) ON DELETE RESTRICT,
@@ -61,11 +71,11 @@ CREATE TABLE public.products (
   CONSTRAINT chk_nombre_producto CHECK (length(trim(nombre)) > 0)
 );
 
-CREATE INDEX idx_products_business ON public.products (business_id);
-CREATE INDEX idx_products_category ON public.products (category_id);
-CREATE INDEX idx_products_vigencia_pub ON public.products (estado_vigencia, fecha_publicacion DESC);
+CREATE INDEX IF NOT EXISTS idx_products_business ON public.products (business_id);
+CREATE INDEX IF NOT EXISTS idx_products_category ON public.products (category_id);
+CREATE INDEX IF NOT EXISTS idx_products_vigencia_pub ON public.products (estado_vigencia, fecha_publicacion DESC);
 
-CREATE TABLE public.system_settings (
+CREATE TABLE IF NOT EXISTS public.system_settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -81,18 +91,22 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS tr_profiles_updated_at ON public.profiles;
 CREATE TRIGGER tr_profiles_updated_at
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
+DROP TRIGGER IF EXISTS tr_businesses_updated_at ON public.businesses;
 CREATE TRIGGER tr_businesses_updated_at
   BEFORE UPDATE ON public.businesses
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
+DROP TRIGGER IF EXISTS tr_products_updated_at ON public.products;
 CREATE TRIGGER tr_products_updated_at
   BEFORE UPDATE ON public.products
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
+DROP TRIGGER IF EXISTS tr_system_settings_updated_at ON public.system_settings;
 CREATE TRIGGER tr_system_settings_updated_at
   BEFORE UPDATE ON public.system_settings
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
@@ -137,14 +151,17 @@ GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated, anon;
 GRANT EXECUTE ON FUNCTION public.owns_business(UUID) TO authenticated;
 
 -- --- profiles: solo lectura propia o admin; sin INSERT manual (lo crea el trigger) ---
+DROP POLICY IF EXISTS "profiles_select_own_or_admin" ON public.profiles;
 CREATE POLICY "profiles_select_own_or_admin"
   ON public.profiles FOR SELECT
   USING (auth.uid() = id OR public.is_admin());
 
+DROP POLICY IF EXISTS "profiles_no_insert_clients" ON public.profiles;
 CREATE POLICY "profiles_no_insert_clients"
   ON public.profiles FOR INSERT
   WITH CHECK (false);
 
+DROP POLICY IF EXISTS "profiles_update_own_or_admin" ON public.profiles;
 CREATE POLICY "profiles_update_own_or_admin"
   ON public.profiles FOR UPDATE
   USING (auth.uid() = id OR public.is_admin())
@@ -179,11 +196,13 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS tr_profiles_role_guard ON public.profiles;
 CREATE TRIGGER tr_profiles_role_guard
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.enforce_profile_role_change();
 
 -- --- businesses ---
+DROP POLICY IF EXISTS "businesses_public_read_active" ON public.businesses;
 CREATE POLICY "businesses_public_read_active"
   ON public.businesses FOR SELECT
   USING (
@@ -193,10 +212,12 @@ CREATE POLICY "businesses_public_read_active"
     )
   );
 
+DROP POLICY IF EXISTS "businesses_owner_read_own" ON public.businesses;
 CREATE POLICY "businesses_owner_read_own"
   ON public.businesses FOR SELECT
   USING (profile_id = auth.uid());
 
+DROP POLICY IF EXISTS "businesses_owner_insert" ON public.businesses;
 CREATE POLICY "businesses_owner_insert"
   ON public.businesses FOR INSERT
   WITH CHECK (
@@ -204,31 +225,37 @@ CREATE POLICY "businesses_owner_insert"
     AND EXISTS (SELECT 1 FROM public.profiles pr WHERE pr.id = auth.uid() AND pr.rol = 'emprendedor')
   );
 
+DROP POLICY IF EXISTS "businesses_owner_update" ON public.businesses;
 CREATE POLICY "businesses_owner_update"
   ON public.businesses FOR UPDATE
   USING (profile_id = auth.uid())
   WITH CHECK (profile_id = auth.uid());
 
+DROP POLICY IF EXISTS "businesses_owner_delete" ON public.businesses;
 CREATE POLICY "businesses_owner_delete"
   ON public.businesses FOR DELETE
   USING (profile_id = auth.uid());
 
+DROP POLICY IF EXISTS "businesses_admin_all" ON public.businesses;
 CREATE POLICY "businesses_admin_all"
   ON public.businesses FOR ALL
   USING (public.is_admin())
   WITH CHECK (public.is_admin());
 
 -- --- categories ---
+DROP POLICY IF EXISTS "categories_public_read" ON public.categories;
 CREATE POLICY "categories_public_read"
   ON public.categories FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "categories_admin_write" ON public.categories;
 CREATE POLICY "categories_admin_write"
   ON public.categories FOR ALL
   USING (public.is_admin())
   WITH CHECK (public.is_admin());
 
 -- --- products ---
+DROP POLICY IF EXISTS "products_public_read_vigentes_activos" ON public.products;
 CREATE POLICY "products_public_read_vigentes_activos"
   ON public.products FOR SELECT
   USING (
@@ -240,42 +267,51 @@ CREATE POLICY "products_public_read_vigentes_activos"
     )
   );
 
+DROP POLICY IF EXISTS "products_owner_read_own" ON public.products;
 CREATE POLICY "products_owner_read_own"
   ON public.products FOR SELECT
   USING (public.owns_business(business_id));
 
+DROP POLICY IF EXISTS "products_owner_insert" ON public.products;
 CREATE POLICY "products_owner_insert"
   ON public.products FOR INSERT
   WITH CHECK (public.owns_business(business_id));
 
+DROP POLICY IF EXISTS "products_owner_update" ON public.products;
 CREATE POLICY "products_owner_update"
   ON public.products FOR UPDATE
   USING (public.owns_business(business_id))
   WITH CHECK (public.owns_business(business_id));
 
+DROP POLICY IF EXISTS "products_owner_delete" ON public.products;
 CREATE POLICY "products_owner_delete"
   ON public.products FOR DELETE
   USING (public.owns_business(business_id));
 
+DROP POLICY IF EXISTS "products_admin_all" ON public.products;
 CREATE POLICY "products_admin_all"
   ON public.products FOR ALL
   USING (public.is_admin())
   WITH CHECK (public.is_admin());
 
 -- --- system_settings ---
+DROP POLICY IF EXISTS "system_settings_public_read" ON public.system_settings;
 CREATE POLICY "system_settings_public_read"
   ON public.system_settings FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "system_settings_admin_write" ON public.system_settings;
 CREATE POLICY "system_settings_admin_write"
   ON public.system_settings FOR INSERT
   WITH CHECK (public.is_admin());
 
+DROP POLICY IF EXISTS "system_settings_admin_update" ON public.system_settings;
 CREATE POLICY "system_settings_admin_update"
   ON public.system_settings FOR UPDATE
   USING (public.is_admin())
   WITH CHECK (public.is_admin());
 
+DROP POLICY IF EXISTS "system_settings_admin_delete" ON public.system_settings;
 CREATE POLICY "system_settings_admin_delete"
   ON public.system_settings FOR DELETE
   USING (public.is_admin());
@@ -296,6 +332,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
