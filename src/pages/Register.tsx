@@ -6,12 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { useSendEmail } from "@/hooks/useSendEmail";
 
 const PENDING_ONBOARDING_KEY = "pending-onboarding";
 
 export default function Register() {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { sendEmail } = useSendEmail();
 
   const [form, setForm] = useState({
     business: "",
@@ -56,12 +58,17 @@ export default function Register() {
       return toast.error(error?.message ?? "No se pudo crear la cuenta");
     }
 
-    if (!data.session) {
-      setIsSubmitting(false);
-      toast.success("Cuenta creada. Revisa tu correo para confirmar y luego inicia sesión.");
-      return navigate("/login");
+    // Activar manualmente el perfil
+    const { error: activateError } = await supabase
+      .from('profiles')
+      .update({ estado: 'activo' })
+      .eq('id', data.user.id);
+
+    if (activateError) {
+      console.error('Error activando perfil:', activateError);
     }
 
+    // Crear negocio inmediatamente
     const { error: businessError } = await supabase.from("businesses").insert({
       profile_id: data.user.id,
       nombre_negocio: form.business,

@@ -14,7 +14,7 @@ CREATE TYPE public.product_estado_vigencia AS ENUM ('vigente', 'expirado');
 CREATE TABLE public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users (id) ON DELETE CASCADE,
   rol public.user_role NOT NULL DEFAULT 'emprendedor',
-  estado public.profile_estado NOT NULL DEFAULT 'pendiente',
+  estado public.profile_estado NOT NULL DEFAULT 'activo',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
