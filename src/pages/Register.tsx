@@ -42,6 +42,7 @@ export default function Register() {
       email: form.email,
       password: form.password,
       options: {
+        emailConfirmTo: false,
         data: {
           name: form.name,
           business: form.business,
