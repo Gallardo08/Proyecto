@@ -12,6 +12,9 @@ import type {
 } from '@/types/database';
 
 type BusinessWithProfile = Business & { profile: Profile | null };
+export type AdminAccount = Profile & {
+  business: Pick<Business, 'nombre_negocio' | 'whatsapp'> | null;
+};
 
 type SupabaseErrorLike = {
   message?: string;
@@ -415,6 +418,25 @@ export function useProfiles(role?: UserRole, status?: ProfileEstado) {
   });
 }
 
+export function useAdminAccounts() {
+  return useQuery({
+    queryKey: ['admin-accounts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, rol, estado, nombre, email, created_at, updated_at, business:businesses(nombre_negocio, whatsapp)')
+        .eq('rol', 'emprendedor')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return (data ?? []).map(({ business, ...profile }) => ({
+        ...profile,
+        business: business?.[0] ?? null,
+      })) as AdminAccount[];
+    },
+  });
+}
+
 export function useUpdateProfileStatus() {
   const queryClient = useQueryClient();
 
@@ -432,6 +454,7 @@ export function useUpdateProfileStatus() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profiles'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-accounts'] });
       queryClient.invalidateQueries({ queryKey: ['profiles', 'emprendedor', 'pendiente'] });
     },
   });

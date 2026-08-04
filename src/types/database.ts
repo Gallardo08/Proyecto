@@ -9,6 +9,8 @@ export interface Profile {
   id: string;
   rol: UserRole;
   estado: ProfileEstado;
+  nombre?: string;
+  email?: string;
   created_at: string;
   updated_at: string;
 }
