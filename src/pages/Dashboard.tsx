@@ -95,7 +95,7 @@ function BusinessSetupForm({ onSuccess }: { onSuccess: (data: BusinessSetupData)
 
 export default function Dashboard() {
   const { user, loading, businessName } = useAuth();
-  const { data: business, isLoading: businessLoading, refetch: refetchBusiness } = useUserBusiness();
+  const { data: business, isLoading: businessLoading, refetch: refetchBusiness } = useUserBusiness(user?.id);
   const { data: products = [], isLoading: productsLoading, refetch: refetchProducts } = useProductsByBusiness(business?.id);
   const deleteProduct = useDeleteProduct();
   const getOrCreateBusiness = useGetOrCreateBusiness();

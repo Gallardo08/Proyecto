@@ -11,6 +11,8 @@ import type {
   ProfileEstado,
 } from '@/types/database';
 
+type BusinessWithProfile = Business & { profile: Profile | null };
+
 type SupabaseErrorLike = {
   message?: string;
   code?: string;
@@ -166,22 +168,22 @@ export function useProductsByCategory(categoryId: string) {
 }
 
 // Hook para obtener el business del usuario actual
-export function useUserBusiness() {
+export function useUserBusiness(profileId: string | undefined) {
   return useQuery({
-    queryKey: ['user-business'],
+    queryKey: ['user-business', profileId],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Usuario no autenticado');
+      if (!profileId) throw new Error('Usuario no autenticado');
 
       const { data, error } = await supabase
         .from('businesses')
         .select('*')
-        .eq('profile_id', user.id)
+        .eq('profile_id', profileId)
         .maybeSingle();
       
       if (error) throw error;
       return data as Business | null;
-    }
+    },
+    enabled: Boolean(profileId),
   });
 }
 

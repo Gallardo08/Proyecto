@@ -76,14 +76,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     getInitialSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        if (session?.user) {
-          const enrichedUser = await enrichUser(session.user);
-          setUser(enrichedUser);
-        } else {
+      (_event, session) => {
+        // No hacer llamadas async de Supabase dentro de este callback: Supabase
+        // mantiene un bloqueo interno durante el evento y la siguiente llamada
+        // (por ejemplo updateUser al cambiar contraseña) puede quedarse esperando.
+        if (!session?.user) {
           setUser(null);
+          setLoading(false);
+          return;
         }
+
         setLoading(false);
+        window.setTimeout(() => {
+          void enrichUser(session.user).then((enrichedUser) => setUser(enrichedUser));
+        }, 0);
       }
     );
 

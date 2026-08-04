@@ -42,7 +42,7 @@ export default function Register() {
       email: form.email,
       password: form.password,
       options: {
-        emailConfirmTo: false,
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
         data: {
           name: form.name,
           business: form.business,

@@ -11,6 +11,7 @@ import ProductDetail from "./pages/ProductDetail";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Recover from "./pages/Recover";
+import UpdatePassword from "./pages/UpdatePassword";
 import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
 import UseCases from "./pages/UseCases";
@@ -33,6 +34,7 @@ const App = () => (
               <Route path="/login" element={<Login />} />
               <Route path="/registro" element={<Register />} />
               <Route path="/recuperar" element={<Recover />} />
+              <Route path="/actualizar-contrasena" element={<UpdatePassword />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/casos-de-uso" element={<UseCases />} />
 
