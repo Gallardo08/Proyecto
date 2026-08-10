@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, Navigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -94,6 +94,7 @@ function BusinessSetupForm({ onSuccess }: { onSuccess: (data: BusinessSetupData)
 }
 
 export default function Dashboard() {
+  const location = useLocation();
   const { user, loading, businessName } = useAuth();
   const { data: business, isLoading: businessLoading, refetch: refetchBusiness } = useUserBusiness(user?.id);
   const { data: products = [], isLoading: productsLoading, refetch: refetchProducts } = useProductsByBusiness(business?.id);
@@ -136,6 +137,13 @@ export default function Dashboard() {
     setShowForm(false);
     setEditingProduct(null);
   };
+
+  useEffect(() => {
+    if (location.state && (location.state as { refresh?: boolean })?.refresh) {
+      void refetchBusiness();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleDeleteProduct = async (productId: string) => {
     try {
@@ -188,17 +196,22 @@ export default function Dashboard() {
 
   return (
     <div className="container py-8">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold">Mi panel</h1>
           <p className="text-muted-foreground">
-            Gestiona las publicaciones de <b>{businessName || business?.nombre_negocio}</b>
+            Gestiona las publicaciones de <b>{business?.nombre_negocio ?? businessName}</b>
           </p>
         </div>
-        <Button onClick={handleCreateProduct} className="shadow-soft">
-          <Plus className="h-4 w-4 mr-1.5" />
-          Publicar producto
-        </Button>
+        <div className="flex flex-wrap gap-3">
+          <Button onClick={handleCreateProduct} className="shadow-soft">
+            <Plus className="h-4 w-4 mr-1.5" />
+            Publicar producto
+          </Button>
+          <Button asChild variant="outline" className="shadow-soft">
+            <Link to="/panel/editar">Editar datos</Link>
+          </Button>
+        </div>
       </div>
 
       {showForm && (

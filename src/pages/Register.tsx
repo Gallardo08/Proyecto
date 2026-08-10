@@ -19,6 +19,7 @@ export default function Register() {
     email: "",
     whatsapp: "",
     location: "",
+    document: "",
     password: "",
   });
 
@@ -29,6 +30,7 @@ export default function Register() {
     if (Object.values(form).some((v) => !v)) return toast.error("Completa todos los campos");
     if (form.password.length < 6) return toast.error("La contraseña debe tener mínimo 6 caracteres");
     if (!/^\d{10,15}$/.test(form.whatsapp)) return toast.error("WhatsApp inválido (solo números, ej: 573001234567)");
+    if (!/^\d+$/.test(form.document)) return toast.error("NIT/Cédula inválida (solo números)");
     setIsSubmitting(true);
     localStorage.setItem(PENDING_ONBOARDING_KEY, JSON.stringify({
       email: form.email.toLowerCase(),
@@ -36,6 +38,7 @@ export default function Register() {
       business: form.business,
       whatsapp: form.whatsapp,
       location: form.location,
+      document: form.document,
     }));
 
     const { data, error } = await supabase.auth.signUp({
@@ -110,6 +113,14 @@ export default function Register() {
             <div>
               <Label>Dirección</Label>
               <Input value={form.location} onChange={(e) => set("location", e.target.value)} placeholder="Calle 10 # 5-20" />
+            </div>
+            <div>
+              <Label>NIT / Cédula</Label>
+              <Input
+                value={form.document}
+                onChange={(e) => set("document", e.target.value.replace(/\D/g, ""))}
+                placeholder="Solo números"
+              />
             </div>
             <div className="sm:col-span-2">
               <Label>Contraseña</Label>

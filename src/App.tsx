@@ -16,6 +16,7 @@ import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
 import UseCases from "./pages/UseCases";
 import AuthCallback from "./pages/AuthCallback";
+import EditBusiness from "./pages/EditBusiness";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -44,6 +45,14 @@ const App = () => (
                 element={
                   <ProtectedRoute requiredRole="emprendedor">
                     <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/panel/editar"
+                element={
+                  <ProtectedRoute requiredRole="emprendedor">
+                    <EditBusiness />
                   </ProtectedRoute>
                 }
               />

@@ -444,6 +444,51 @@ export function useGetOrCreateBusiness() {
   });
 }
 
+export function useUpdateBusiness() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (updates: {
+      nombre_negocio?: string;
+      whatsapp?: string;
+      ubicacion?: string;
+      descripcion?: string;
+    }) => {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) {
+        throw new Error(getSupabaseErrorMessage(userError, "No se pudo validar la sesión"));
+      }
+      if (!user) {
+        throw new Error("Usuario no autenticado");
+      }
+
+      const { data, error } = await supabase
+        .from('businesses')
+        .update({
+          ...(updates.nombre_negocio !== undefined && { nombre_negocio: updates.nombre_negocio.trim() }),
+          ...(updates.whatsapp !== undefined && { whatsapp: updates.whatsapp.trim() }),
+          ...(updates.ubicacion !== undefined && { ubicacion: updates.ubicacion.trim() || null }),
+          ...(updates.descripcion !== undefined && { descripcion: updates.descripcion.trim() || null }),
+        })
+        .eq('profile_id', user.id)
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(getSupabaseErrorMessage(error, "No se pudo actualizar el negocio"));
+      }
+
+      queryClient.setQueryData(['user-business', user.id], data as Business);
+      return data as Business;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-business'] });
+      queryClient.invalidateQueries({ queryKey: ['products', 'business'] });
+      queryClient.invalidateQueries({ queryKey: ['products', 'profile'] });
+    }
+  });
+}
+
 export function useProfiles(role?: UserRole, status?: ProfileEstado) {
   return useQuery({
     queryKey: ['profiles', role, status],
