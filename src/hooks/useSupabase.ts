@@ -320,6 +320,31 @@ export function useCreateProduct() {
   });
 }
 
+export function useDeleteExpiredProducts() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const threshold = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .lt('fecha_publicacion', threshold);
+
+      if (error) {
+        throw new Error(getSupabaseErrorMessage(error, "No se pudo eliminar publicaciones expiradas"));
+      }
+
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['products', 'category'] });
+      queryClient.invalidateQueries({ queryKey: ['products', 'business'] });
+    }
+  });
+}
+
 export function useUpdateProduct() {
   const queryClient = useQueryClient();
   

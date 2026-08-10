@@ -1,20 +1,27 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import CategoryFilter from "@/components/CategoryFilter";
 import ProductGallery from "@/components/ProductGallery";
-import { useProducts, useProductsByCategory } from "@/hooks/useSupabase";
+import { useDeleteExpiredProducts, useProducts, useProductsByCategory } from "@/hooks/useSupabase";
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
+  const deleteExpiredProducts = useDeleteExpiredProducts();
   const { data: allProducts = [], isLoading: allLoading, error: allError } = useProducts();
   const {
     data: categoryProducts = [],
     isLoading: categoryLoading,
     error: categoryError,
   } = useProductsByCategory(selectedCategory || "");
+
+  useEffect(() => {
+    void deleteExpiredProducts.mutateAsync().catch(() => {
+      // No mostrar error al usuario en el home; la consulta seguirá mostrando los productos vigentes.
+    });
+  }, [deleteExpiredProducts]);
 
   const products = selectedCategory ? categoryProducts : allProducts;
   const loading = selectedCategory ? categoryLoading : allLoading;

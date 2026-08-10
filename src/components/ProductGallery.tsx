@@ -60,6 +60,24 @@ export default function ProductGallery({ products, loading, errorMessage }: Prod
     return cleanNumber.startsWith('57') ? cleanNumber : `57${cleanNumber}`;
   };
 
+  const formatPublicationDate = (dateString: string) => {
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleDateString('es-CO', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
+
+  const getPublicationAge = (dateString: string) => {
+    const publishedDate = new Date(dateString);
+    if (Number.isNaN(publishedDate.getTime())) return "";
+    const diffMs = Date.now() - publishedDate.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    return diffDays === 0 ? "Publicado hoy" : `Publicado hace ${diffDays} día${diffDays === 1 ? '' : 's'}`;
+  };
+
   const openWhatsApp = (phone: string, productName: string, businessName: string) => {
     const message = encodeURIComponent(
       `¡Hola! Vi tu producto "${productName}" en Ofertas Ocaña y estoy interesado.`
@@ -144,6 +162,9 @@ export default function ProductGallery({ products, loading, errorMessage }: Prod
                   <span className="truncate">{product.business.ubicacion}</span>
                 </div>
               )}
+              <div className="text-xs text-muted-foreground">
+                {formatPublicationDate(product.fecha_publicacion)} · {getPublicationAge(product.fecha_publicacion)}
+              </div>
             </div>
 
             {/* Botón de WhatsApp */}

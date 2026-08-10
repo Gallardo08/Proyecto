@@ -118,7 +118,13 @@ export default function ProductForm({ product, business_id, onSuccess, onCancel 
         toast.success("Producto actualizado correctamente");
       } else {
         await createProduct.mutateAsync(submitData);
-        toast.success("Producto creado correctamente");
+        toast.success(
+          `Producto creado correctamente. Publicado el ${new Date().toLocaleDateString('es-CO', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+          })}`
+        );
       }
 
       onSuccess?.();
