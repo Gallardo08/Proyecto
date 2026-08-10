@@ -13,7 +13,7 @@ import type {
 
 type BusinessWithProfile = Business & { profile: Profile | null };
 export type AdminAccount = Profile & {
-  business: Pick<Business, 'id' | 'nombre_negocio' | 'whatsapp'> | null;
+  business: Pick<Business, 'nombre_negocio' | 'whatsapp'> | null;
 };
 
 type SupabaseErrorLike = {
@@ -113,6 +113,7 @@ export function useProductsByBusiness(businessId: string | undefined) {
     queryKey: ['products', 'business', businessId],
     queryFn: async () => {
       if (!businessId) throw new Error('No se encontró el negocio del usuario');
+      
 
       const { data, error } = await supabase
         .from('products')
@@ -137,47 +138,6 @@ export function useProductsByBusiness(businessId: string | undefined) {
       return data as ProductWithRelations[];
     },
     enabled: !!businessId
-  });
-}
-
-export function useProductsByProfile(profileId: string | undefined) {
-  return useQuery({
-    queryKey: ['products', 'profile', profileId],
-    queryFn: async () => {
-      if (!profileId) throw new Error('No se encontró el perfil del emprendedor');
-
-      const { data: business, error: businessError } = await supabase
-        .from('businesses')
-        .select('id')
-        .eq('profile_id', profileId)
-        .maybeSingle();
-
-      if (businessError) throw businessError;
-      if (!business?.id) return [];
-
-      const { data, error } = await supabase
-        .from('products')
-        .select(`
-          *,
-          business:businesses(
-            id,
-            nombre_negocio,
-            whatsapp,
-            ubicacion,
-            profile_id
-          ),
-          category:categories(
-            id,
-            nombre_categoria
-          )
-        `)
-        .eq('business_id', business.id)
-        .order('fecha_publicacion', { ascending: false });
-      
-      if (error) throw error;
-      return data as ProductWithRelations[];
-    },
-    enabled: !!profileId
   });
 }
 
@@ -465,18 +425,14 @@ export function useAdminAccounts() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, rol, estado, nombre, email, created_at, updated_at, business:businesses(id, nombre_negocio, whatsapp)')
+        .select('id, rol, estado, nombre, email, created_at, updated_at, business:businesses(nombre_negocio, whatsapp)')
         .eq('rol', 'emprendedor')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       return (data ?? []).map(({ business, ...profile }) => ({
         ...profile,
-        business: business
-          ? Array.isArray(business)
-            ? business[0] ?? null
-            : business
-          : null,
+        business: business?.[0] ?? null,
       })) as AdminAccount[];
     },
   });

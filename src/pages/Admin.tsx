@@ -1,16 +1,17 @@
 import { useState } from "react";
 import { Navigate } from "react-router-dom";
-import { Ban, Check, ChevronRight, Loader2, MessageCircle, Plus, Save, Settings, ShieldCheck, Users } from "lucide-react";
+import { Ban, Check, ChevronRight, Loader2, MessageCircle, Plus, Save, Settings, ShieldCheck, Users, Trash2, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useApp } from "@/store/app";
-import { useAdminAccounts, useCategories, useCreateCategory, useUpdateProfileStatus } from "@/hooks/useSupabase";
+import { useAdminAccounts, useCategories, useCreateCategory, useUpdateProfileStatus, useProductsByProfile, useDeleteProduct } from "@/hooks/useSupabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import type { ProductWithRelations } from "@/types/database";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,6 +42,10 @@ export default function Admin() {
   const [active, setActive] = useState<AdminSection>("cuentas");
   const [newCat, setNewCat] = useState("");
   const [waNumber, setWaNumber] = useState(officialWhatsapp);
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const selectedAccount = accounts.find((account) => account.id === selectedProfileId) ?? null;
+  const { data: accountProducts = [], isLoading: accountProductsLoading } = useProductsByProfile(selectedProfileId || undefined);
+  const deleteProduct = useDeleteProduct();
 
   if (loading) {
     return <div className="container py-16 text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" /></div>;
@@ -57,6 +62,21 @@ export default function Admin() {
         onError: (error) => toast.error(`No se pudo actualizar la cuenta: ${error.message}`),
       }
     );
+  };
+
+  const handleSelectAccount = (account: { id: string; nombre?: string; email?: string; business: { id: string; nombre_negocio: string; whatsapp: string } | null }) => {
+    setSelectedProfileId(account.id);
+  };
+
+  const handleClearSelection = () => setSelectedProfileId(null);
+
+  const handleDeleteProduct = async (productId: string) => {
+    try {
+      await deleteProduct.mutateAsync(productId);
+      toast.success("Producto eliminado correctamente");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al eliminar el producto");
+    }
   };
 
   return (
@@ -95,8 +115,17 @@ export default function Admin() {
                       <p className="font-semibold">{account.nombre || "Sin nombre registrado"}</p>
                       <p className="text-sm text-muted-foreground">{account.email || "Sin correo registrado"}</p>
                       <p className="text-sm text-muted-foreground">Negocio: {account.business?.nombre_negocio || "Sin negocio registrado"} · WhatsApp: {account.business?.whatsapp || "Sin WhatsApp registrado"}</p>
+                      <p className="text-xs text-muted-foreground">Perfil: {account.id}</p>
                     </div>
                     <Badge variant={account.estado === "activo" ? "default" : account.estado === "bloqueado" ? "destructive" : "secondary"}>{account.estado}</Badge>
+                    <Button
+                      size="sm"
+                      variant={selectedProfileId === account.id ? "secondary" : "outline"}
+                      onClick={() => handleSelectAccount(account)}
+                      disabled={!account.business?.id}
+                    >
+                      {selectedProfileId === account.id ? "Publicaciones" : "Ver publicaciones"}
+                    </Button>
                     {account.estado === "bloqueado" ? (
                       <Button size="sm" variant="outline" disabled={updateProfileStatus.isPending} onClick={() => changeAccountStatus(account.id, "activo")}><Check className="mr-1 h-3.5 w-3.5" />Activar</Button>
                     ) : (
@@ -111,6 +140,62 @@ export default function Admin() {
                   </div>
                 ))}
                 {!accountsLoading && !accountsError && accounts.length === 0 && <p className="py-6 text-center text-muted-foreground">No hay emprendedores registrados.</p>}
+
+                {selectedAccount && (
+                  <div className="mt-6 rounded-xl border bg-muted p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div>
+                        <h2 className="text-xl font-semibold">Publicaciones de {selectedAccount.nombre || selectedAccount.email}</h2>
+                        <p className="text-sm text-muted-foreground">Negocio: {selectedAccount.business?.nombre_negocio} · WhatsApp: {selectedAccount.business?.whatsapp}</p>
+                      </div>
+                      <Button size="sm" variant="outline" onClick={handleClearSelection}>Cerrar vista</Button>
+                    </div>
+
+                    {accountProductsLoading ? (
+                      <p className="mt-4 text-sm text-muted-foreground">Cargando publicaciones...</p>
+                    ) : accountProducts.length === 0 ? (
+                      <p className="mt-4 text-sm text-muted-foreground">Este emprendedor no tiene publicaciones activas.</p>
+                    ) : (
+                      <div className="grid gap-4 mt-4 md:grid-cols-2">
+                        {accountProducts.map((product: ProductWithRelations) => (
+                          <Card key={product.id} className="overflow-hidden">
+                            <div className="aspect-video bg-muted overflow-hidden">
+                              {product.imagen_url ? (
+                                <img src={product.imagen_url} alt={product.nombre} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <ImageIcon className="h-8 w-8 text-muted-foreground/50" />
+                                </div>
+                              )}
+                            </div>
+                            <CardContent className="p-4">
+                              <div className="flex flex-wrap items-center gap-2 mb-2">
+                                <Badge variant="secondary">{product.category?.nombre_categoria || "Sin categoría"}</Badge>
+                                {product.descuento && product.descuento > 0 && (
+                                  <Badge className="bg-accent text-accent-foreground">-{product.descuento}%</Badge>
+                                )}
+                              </div>
+                              <h3 className="font-semibold">{product.nombre}</h3>
+                              <p className="text-sm text-muted-foreground mt-2">{product.descripcion || "Sin descripción"}</p>
+                              <div className="mt-4 flex items-center justify-between gap-3">
+                                <div>
+                                  <p className="text-sm text-muted-foreground">Precio</p>
+                                  <p className="font-semibold">${(product.descuento && product.descuento > 0
+                                    ? product.precio * (1 - product.descuento / 100)
+                                    : product.precio
+                                  ).toLocaleString("es-CO")}</p>
+                                </div>
+                                <Button size="sm" variant="destructive" onClick={() => handleDeleteProduct(product.id)} disabled={deleteProduct.isPending}>
+                                  {deleteProduct.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
