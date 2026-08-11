@@ -2,8 +2,24 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
-  ({ className, type, ...props }, ref) => {
+interface InputProps extends React.ComponentProps<"input"> {
+  uppercase?: boolean;
+}
+
+const shouldUppercaseInput = (type?: string, uppercase = true) => {
+  return uppercase && type !== "email" && type !== "password" && type !== "number" && type !== "file";
+};
+
+const Input = React.forwardRef<HTMLInputElement, InputProps>(
+  ({ className, type, onChange, uppercase = true, ...props }, ref) => {
+    const handleChange: React.ChangeEventHandler<HTMLInputElement> = (event) => {
+      if (shouldUppercaseInput(type, uppercase) && typeof event.target.value === "string") {
+        event.target.value = event.target.value.toUpperCase();
+      }
+
+      onChange?.(event);
+    };
+
     return (
       <input
         type={type}
@@ -12,6 +28,8 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
           className,
         )}
         ref={ref}
+        onChange={handleChange}
+        style={shouldUppercaseInput(type, uppercase) ? { textTransform: "uppercase" } : undefined}
         {...props}
       />
     );
