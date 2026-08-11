@@ -1,19 +1,29 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 const PENDING_ONBOARDING_KEY = "pending-onboarding";
 
 export default function Login() {
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  if (loading) {
+    return <div className="flex min-h-[50vh] items-center justify-center">Cargando...</div>;
+  }
+
+  if (user) {
+    return <Navigate to={user.profile?.rol === "admin" ? "/admin" : "/panel"} replace />;
+  }
   const getPendingOnboarding = () => {
     const raw = localStorage.getItem(PENDING_ONBOARDING_KEY);
     if (!raw) return null;

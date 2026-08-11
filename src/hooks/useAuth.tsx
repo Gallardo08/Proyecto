@@ -65,7 +65,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session?.user) {
           const enrichedUser = await enrichUser(session.user);
           setUser(enrichedUser);
+          return;
         }
+
+        setUser(null);
       } catch (error) {
         console.error('Error obteniendo sesión inicial:', error);
       } finally {
@@ -77,19 +80,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
-        // No hacer llamadas async de Supabase dentro de este callback: Supabase
-        // mantiene un bloqueo interno durante el evento y la siguiente llamada
-        // (por ejemplo updateUser al cambiar contraseña) puede quedarse esperando.
         if (!session?.user) {
           setUser(null);
           setLoading(false);
           return;
         }
 
-        setLoading(false);
-        window.setTimeout(() => {
-          void enrichUser(session.user).then((enrichedUser) => setUser(enrichedUser));
-        }, 0);
+        setLoading(true);
+        void enrichUser(session.user).then((enrichedUser) => {
+          setUser(enrichedUser);
+          setLoading(false);
+        });
       }
     );
 
