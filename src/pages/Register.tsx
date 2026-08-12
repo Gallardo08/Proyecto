@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { PasswordRequirements } from "@/components/PasswordRequirements";
+import { passwordErrorMessage } from "@/lib/passwordPolicy";
 
 const PENDING_ONBOARDING_KEY = "pending-onboarding";
 
@@ -21,6 +23,7 @@ export default function Register() {
     location: "",
     document: "",
     password: "",
+    confirmPassword: "",
   });
 
   const set = (k: keyof typeof form, v: string) => setForm({ ...form, [k]: v });
@@ -28,7 +31,12 @@ export default function Register() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (Object.values(form).some((v) => !v)) return toast.error("Completa todos los campos");
-    if (form.password.length < 6) return toast.error("La contraseña debe tener mínimo 6 caracteres");
+    const passwordError = passwordErrorMessage(form.password);
+    if (passwordError) return toast.error(passwordError);
+    if (form.password !== form.confirmPassword) return toast.error("Las contraseñas no coinciden");
+    const emailLocalPart = form.email.split("@")[0]?.toLowerCase() ?? "";
+    if (emailLocalPart.length >= 4 && form.password.toLowerCase().includes(emailLocalPart))
+      return toast.error("La contraseña no debe contener tu correo");
     if (!/^\d{10,15}$/.test(form.whatsapp)) return toast.error("WhatsApp inválido (solo números, ej: 573001234567)");
     if (!/^\d+$/.test(form.document)) return toast.error("NIT/Cédula inválida (solo números)");
     setIsSubmitting(true);
@@ -97,7 +105,22 @@ export default function Register() {
             </div>
             <div className="sm:col-span-2">
               <Label>Contraseña</Label>
-              <Input type="password" value={form.password} onChange={(e) => set("password", e.target.value)} />
+              <Input
+                type="password"
+                autoComplete="new-password"
+                value={form.password}
+                onChange={(e) => set("password", e.target.value)}
+              />
+              <PasswordRequirements password={form.password} />
+            </div>
+            <div className="sm:col-span-2">
+              <Label>Confirmar contraseña</Label>
+              <Input
+                type="password"
+                autoComplete="new-password"
+                value={form.confirmPassword}
+                onChange={(e) => set("confirmPassword", e.target.value)}
+              />
             </div>
             <Button type="submit" className="sm:col-span-2 mt-2" disabled={isSubmitting}>
               {isSubmitting ? "Creando..." : "Crear cuenta"}
