@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import PasswordStrength from "@/components/PasswordStrength";
-import { firstPasswordError } from "@/lib/password";
 import { toast } from "sonner";
+import { PasswordRequirements } from "@/components/PasswordRequirements";
+import { passwordErrorMessage } from "@/lib/passwordPolicy";
 
 const PENDING_ONBOARDING_KEY = "pending-onboarding";
 
@@ -31,13 +31,12 @@ export default function Register() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (Object.values(form).some((v) => !v)) return toast.error("Completa todos los campos");
-    const passwordError = firstPasswordError(form.password, {
-      email: form.email,
-      name: form.name,
-      business: form.business,
-    });
+    const passwordError = passwordErrorMessage(form.password);
     if (passwordError) return toast.error(passwordError);
     if (form.password !== form.confirmPassword) return toast.error("Las contraseñas no coinciden");
+    const emailLocalPart = form.email.split("@")[0]?.toLowerCase() ?? "";
+    if (emailLocalPart.length >= 4 && form.password.toLowerCase().includes(emailLocalPart))
+      return toast.error("La contraseña no debe contener tu correo");
     if (!/^\d{10,15}$/.test(form.whatsapp)) return toast.error("WhatsApp inválido (solo números, ej: 573001234567)");
     if (!/^\d+$/.test(form.document)) return toast.error("NIT/Cédula inválida (solo números)");
     setIsSubmitting(true);
@@ -112,10 +111,7 @@ export default function Register() {
                 value={form.password}
                 onChange={(e) => set("password", e.target.value)}
               />
-              <PasswordStrength
-                password={form.password}
-                context={{ email: form.email, name: form.name, business: form.business }}
-              />
+              <PasswordRequirements password={form.password} />
             </div>
             <div className="sm:col-span-2">
               <Label>Confirmar contraseña</Label>
