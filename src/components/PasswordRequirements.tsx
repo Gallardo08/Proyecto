@@ -1,9 +1,9 @@
 import { Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { passwordRules, validatePassword } from "@/lib/passwordPolicy";
+import { PasswordContext, passwordRules, validatePassword } from "@/lib/passwordPolicy";
 
-export function PasswordRequirements({ password }: { password: string }) {
-  const { score, strengthLabel, isValid } = validatePassword(password);
+export function PasswordRequirements({ password, context }: { password: string; context?: PasswordContext }) {
+  const { score, strengthLabel, isValid } = validatePassword(password, context);
   const percentage = (score / passwordRules.length) * 100;
 
   return (
@@ -20,7 +20,7 @@ export function PasswordRequirements({ password }: { password: string }) {
       <p className="text-xs text-muted-foreground">Seguridad: {strengthLabel}</p>
       <ul className="grid gap-1 sm:grid-cols-2">
         {passwordRules.map((rule) => {
-          const passed = rule.test(password);
+          const passed = rule.test(password, context);
           return (
             <li
               key={rule.id}

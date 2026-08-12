@@ -31,12 +31,13 @@ export default function Register() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (Object.values(form).some((v) => !v)) return toast.error("Completa todos los campos");
-    const passwordError = passwordErrorMessage(form.password);
+    const passwordError = passwordErrorMessage(form.password, {
+      email: form.email,
+      name: form.name,
+      business: form.business,
+    });
     if (passwordError) return toast.error(passwordError);
     if (form.password !== form.confirmPassword) return toast.error("Las contraseñas no coinciden");
-    const emailLocalPart = form.email.split("@")[0]?.toLowerCase() ?? "";
-    if (emailLocalPart.length >= 4 && form.password.toLowerCase().includes(emailLocalPart))
-      return toast.error("La contraseña no debe contener tu correo");
     if (!/^\d{10,15}$/.test(form.whatsapp)) return toast.error("WhatsApp inválido (solo números, ej: 573001234567)");
     if (!/^\d+$/.test(form.document)) return toast.error("NIT/Cédula inválida (solo números)");
     setIsSubmitting(true);
@@ -111,7 +112,10 @@ export default function Register() {
                 value={form.password}
                 onChange={(e) => set("password", e.target.value)}
               />
-              <PasswordRequirements password={form.password} />
+              <PasswordRequirements
+                password={form.password}
+                context={{ email: form.email, name: form.name, business: form.business }}
+              />
             </div>
             <div className="sm:col-span-2">
               <Label>Confirmar contraseña</Label>

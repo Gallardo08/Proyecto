@@ -14,10 +14,43 @@ const COMMON_PASSWORDS = [
   "administrador",
 ];
 
+export type PasswordContext = {
+  email?: string;
+  name?: string;
+  business?: string;
+};
+
 export type PasswordRule = {
   id: string;
   label: string;
-  test: (password: string) => boolean;
+  test: (password: string, context?: PasswordContext) => boolean;
+};
+
+const normalize = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+const SEQUENCES = ["0123456789", "abcdefghijklmnopqrstuvwxyz", "qwertyuiop"];
+
+const hasSequence = (password: string) => {
+  const lower = normalize(password);
+  return SEQUENCES.some((sequence) => {
+    for (let i = 0; i + 4 <= sequence.length; i += 1) {
+      const chunk = sequence.slice(i, i + 4);
+      if (lower.includes(chunk) || lower.includes([...chunk].reverse().join(""))) return true;
+    }
+    return false;
+  });
+};
+
+const personalTerms = (context?: PasswordContext) => {
+  if (!context) return [];
+  return [context.email?.split("@")[0], context.name, context.business]
+    .filter((value): value is string => Boolean(value))
+    .flatMap((value) => normalize(value).split(/[^a-z0-9]+/))
+    .filter((term) => term.length >= 4);
 };
 
 export const passwordRules: PasswordRule[] = [
@@ -57,6 +90,19 @@ export const passwordRules: PasswordRule[] = [
     test: (password) =>
       password.length > 0 && !COMMON_PASSWORDS.includes(password.toLowerCase()),
   },
+  {
+    id: "no-sequences",
+    label: "Sin secuencias ni repeticiones (aaa, 1234, qwerty)",
+    test: (password) => password.length > 0 && !/(.)\1{2,}/.test(password) && !hasSequence(password),
+  },
+  {
+    id: "not-personal",
+    label: "No incluye tu correo, nombre ni negocio",
+    test: (password, context) => {
+      const lower = normalize(password);
+      return !personalTerms(context).some((term) => lower.includes(term));
+    },
+  },
 ];
 
 export type PasswordValidation = {
@@ -66,8 +112,8 @@ export type PasswordValidation = {
   strengthLabel: "Muy débil" | "Débil" | "Aceptable" | "Fuerte";
 };
 
-export function validatePassword(password: string): PasswordValidation {
-  const failed = passwordRules.filter((rule) => !rule.test(password));
+export function validatePassword(password: string, context?: PasswordContext): PasswordValidation {
+  const failed = passwordRules.filter((rule) => !rule.test(password, context));
   const score = passwordRules.length - failed.length;
   const ratio = score / passwordRules.length;
 
@@ -77,8 +123,8 @@ export function validatePassword(password: string): PasswordValidation {
   return { isValid: failed.length === 0, failed, score, strengthLabel };
 }
 
-export function passwordErrorMessage(password: string): string | null {
-  const { failed } = validatePassword(password);
+export function passwordErrorMessage(password: string, context?: PasswordContext): string | null {
+  const { failed } = validatePassword(password, context);
   if (failed.length === 0) return null;
   return `La contraseña no cumple los requisitos: ${failed.map((rule) => rule.label.toLowerCase()).join(", ")}.`;
 }
