@@ -13,7 +13,7 @@ export default function ProtectedRoute({
   requiredRole, 
   redirectTo = "/login" 
 }: ProtectedRouteProps) {
-  const { user, loading, isEmprendedor, isAdmin, isActive } = useAuth();
+  const { user, loading, isEmprendedor, isAdmin, isActive, isEmailConfirmed } = useAuth();
 
   if (loading) {
     return (
@@ -26,6 +26,19 @@ export default function ProtectedRoute({
   // Si no hay usuario, redirigir al login
   if (!user) {
     return <Navigate to={redirectTo} replace />;
+  }
+
+  if (user && !isEmailConfirmed) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">Verifica tu correo</h1>
+          <p className="text-muted-foreground">
+            Tu cuenta aún no ha confirmado el correo. Revisa tu bandeja de entrada antes de entrar.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   // Si el usuario no está activo, mostrar mensaje

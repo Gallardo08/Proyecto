@@ -32,14 +32,6 @@ export default function Register() {
     if (!/^\d{10,15}$/.test(form.whatsapp)) return toast.error("WhatsApp inválido (solo números, ej: 573001234567)");
     if (!/^\d+$/.test(form.document)) return toast.error("NIT/Cédula inválida (solo números)");
     setIsSubmitting(true);
-    localStorage.setItem(PENDING_ONBOARDING_KEY, JSON.stringify({
-      email: form.email.toLowerCase(),
-      name: form.name,
-      business: form.business,
-      whatsapp: form.whatsapp,
-      location: form.location,
-      document: form.document,
-    }));
 
     const { data, error } = await supabase.auth.signUp({
       email: form.email,
@@ -60,29 +52,10 @@ export default function Register() {
       return toast.error(error?.message ?? "No se pudo crear la cuenta");
     }
 
-    if (!data.session) {
-      setIsSubmitting(false);
-      toast.success("Cuenta creada. Revisa tu correo para confirmar y luego inicia sesión.");
-      return navigate("/login");
-    }
-
-    const { error: businessError } = await supabase.from("businesses").insert({
-      profile_id: data.user.id,
-      nombre_negocio: form.business,
-      whatsapp: form.whatsapp,
-      ubicacion: form.location,
-      descripcion: "",
-      foto_perfil_url: null,
-    });
-
-    if (businessError) {
-      setIsSubmitting(false);
-      return toast.error(`Cuenta creada, pero falló crear el negocio: ${businessError.message}`);
-    }
-
-    toast.success("Cuenta creada con éxito 🎉");
-    navigate("/panel");
+    await supabase.auth.signOut();
     setIsSubmitting(false);
+    toast.success("Cuenta creada. Se envió un correo de confirmación. Primero verifica tu email y luego vuelve a iniciar sesión.");
+    window.location.href = "/login?pendingConfirmation=1";
   };
 
   return (

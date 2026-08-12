@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,21 +7,46 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { canAccessAfterEmailConfirmation } from "@/lib/auth";
 
 const PENDING_ONBOARDING_KEY = "pending-onboarding";
 
 export default function Login() {
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const location = useLocation();
+  const { user, loading, isEmailConfirmed } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const pendingConfirmation = new URLSearchParams(location.search).get("pendingConfirmation") === "1";
 
   if (loading) {
     return <div className="flex min-h-[50vh] items-center justify-center">Cargando...</div>;
   }
 
   if (user) {
+    if (!isEmailConfirmed || user.profile?.estado !== "activo") {
+      return (
+        <div className="container max-w-md py-16 text-center">
+          <Card className="shadow-soft">
+            <CardHeader>
+              <CardTitle className="text-2xl">Verifica tu correo</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Tu cuenta está pendiente de verificación. Revisa tu bandeja de entrada y confirma el correo para poder ingresar.
+              </p>
+              {pendingConfirmation && (
+                <p className="text-sm text-primary">
+                  Ya enviamos el correo de confirmación. Revisa tu bandeja y vuelve a iniciar sesión.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
     return <Navigate to={user.profile?.rol === "admin" ? "/admin" : "/panel"} replace />;
   }
   const getPendingOnboarding = () => {
@@ -70,6 +95,12 @@ export default function Login() {
       await supabase.auth.signOut();
       setIsSubmitting(false);
       return toast.error("Tu cuenta está bloqueada. Contacta al administrador.");
+    }
+
+    if (!canAccessAfterEmailConfirmation(profile, data.user) || !data.user.email_confirmed_at) {
+      await supabase.auth.signOut();
+      setIsSubmitting(false);
+      return toast.error("Debes confirmar tu correo antes de iniciar sesión. Revisa tu bandeja de entrada.");
     }
 
     const fallbackName = data.user.email?.split("@")[0] ?? "Usuario";
@@ -135,6 +166,11 @@ export default function Login() {
           <p className="text-sm text-muted-foreground">Accede a tu cuenta de emprendedor o administrador.</p>
         </CardHeader>
         <CardContent>
+          {pendingConfirmation && (
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm text-primary">
+              Cuenta creada. Se envió un correo de confirmación. Revisa tu bandeja y luego inicia sesión.
+            </div>
+          )}
           <form onSubmit={submit} className="space-y-4">
             <div>
               <Label htmlFor="email">Correo electrónico</Label>

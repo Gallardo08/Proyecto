@@ -15,6 +15,7 @@ interface AuthContextValue {
   isEmprendedor: boolean;
   isAdmin: boolean;
   isActive: boolean;
+  isEmailConfirmed: boolean;
   businessName?: string;
   userMetadata: {
     name: string | undefined;
@@ -110,6 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isEmprendedor: user?.profile?.rol === 'emprendedor',
       isAdmin: user?.profile?.rol === 'admin',
       isActive: user?.profile?.estado === 'activo',
+      isEmailConfirmed: Boolean(user?.email_confirmed_at),
       businessName: user?.business?.nombre_negocio,
       userMetadata: {
         name: user?.user_metadata?.name || user?.email?.split('@')[0],
