@@ -86,13 +86,21 @@ export function useProducts() {
       const { data, error } = await supabase
         .from('products')
         .select(`
-          *,
+          id,
+          business_id,
+          category_id,
+          nombre,
+          descripcion,
+          precio,
+          descuento,
+          imagen_url,
+          fecha_publicacion,
+          estado_vigencia,
           business:businesses(
             id,
             nombre_negocio,
             whatsapp,
-            ubicacion,
-            profile_id
+            ubicacion
           ),
           category:categories(
             id,
@@ -100,11 +108,13 @@ export function useProducts() {
           )
         `)
         .eq('estado_vigencia', 'vigente')
-        .order('fecha_publicacion', { ascending: false });
+        .order('fecha_publicacion', { ascending: false })
+        .limit(100); // Limitar a 100 productos para mejor rendimiento
       
       if (error) throw error;
       return data as ProductWithRelations[];
-    }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutos de caché
   });
 }
 
@@ -117,13 +127,21 @@ export function useProductsByBusiness(businessId: string | undefined) {
       const { data, error } = await supabase
         .from('products')
         .select(`
-          *,
+          id,
+          business_id,
+          category_id,
+          nombre,
+          descripcion,
+          precio,
+          descuento,
+          imagen_url,
+          fecha_publicacion,
+          estado_vigencia,
           business:businesses(
             id,
             nombre_negocio,
             whatsapp,
-            ubicacion,
-            profile_id
+            ubicacion
           ),
           category:categories(
             id,
@@ -131,12 +149,14 @@ export function useProductsByBusiness(businessId: string | undefined) {
           )
         `)
         .eq('business_id', businessId)
-        .order('fecha_publicacion', { ascending: false });
+        .order('fecha_publicacion', { ascending: false })
+        .limit(100); // Limitar a 100 productos para mejor rendimiento
       
       if (error) throw error;
       return data as ProductWithRelations[];
     },
-    enabled: !!businessId
+    enabled: !!businessId,
+    staleTime: 5 * 60 * 1000, // 5 minutos de caché
   });
 }
 
@@ -158,13 +178,21 @@ export function useProductsByProfile(profileId: string | undefined) {
       const { data, error } = await supabase
         .from('products')
         .select(`
-          *,
+          id,
+          business_id,
+          category_id,
+          nombre,
+          descripcion,
+          precio,
+          descuento,
+          imagen_url,
+          fecha_publicacion,
+          estado_vigencia,
           business:businesses(
             id,
             nombre_negocio,
             whatsapp,
-            ubicacion,
-            profile_id
+            ubicacion
           ),
           category:categories(
             id,
@@ -172,12 +200,14 @@ export function useProductsByProfile(profileId: string | undefined) {
           )
         `)
         .eq('business_id', business.id)
-        .order('fecha_publicacion', { ascending: false });
+        .order('fecha_publicacion', { ascending: false })
+        .limit(100); // Limitar a 100 productos para mejor rendimiento
       
       if (error) throw error;
       return data as ProductWithRelations[];
     },
-    enabled: !!profileId
+    enabled: !!profileId,
+    staleTime: 5 * 60 * 1000, // 5 minutos de caché
   });
 }
 
@@ -188,7 +218,16 @@ export function useProductsByCategory(categoryId: string) {
       const { data, error } = await supabase
         .from('products')
         .select(`
-          *,
+          id,
+          business_id,
+          category_id,
+          nombre,
+          descripcion,
+          precio,
+          descuento,
+          imagen_url,
+          fecha_publicacion,
+          estado_vigencia,
           business:businesses(
             id,
             nombre_negocio,
@@ -202,12 +241,14 @@ export function useProductsByCategory(categoryId: string) {
         `)
         .eq('category_id', categoryId)
         .eq('estado_vigencia', 'vigente')
-        .order('fecha_publicacion', { ascending: false });
+        .order('fecha_publicacion', { ascending: false })
+        .limit(100); // Limitar a 100 productos para mejor rendimiento
       
       if (error) throw error;
       return data as ProductWithRelations[];
     },
-    enabled: !!categoryId
+    enabled: !!categoryId,
+    staleTime: 5 * 60 * 1000, // 5 minutos de caché
   });
 }
 
