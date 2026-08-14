@@ -72,7 +72,7 @@ export interface BusinessWithProfile extends Business {
 export interface ProductFormData {
   nombre: string;
   descripcion?: string;
-  precio: number;
+  precio?: number;
   descuento?: number;
   category_id: string;
   imagen?: File;

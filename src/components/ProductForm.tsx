@@ -32,8 +32,8 @@ export default function ProductForm({ product, business_id, onSuccess, onCancel 
   const [formData, setFormData] = useState<ProductFormData>({
     nombre: product?.nombre || "",
     descripcion: product?.descripcion || "",
-    precio: product?.precio || 0,
-    descuento: product?.descuento || 0,
+    precio: product?.precio ?? undefined,
+    descuento: product?.descuento ?? undefined,
     category_id: product?.category_id || "",
     imagen: undefined
   });
@@ -90,12 +90,12 @@ export default function ProductForm({ product, business_id, onSuccess, onCancel 
         return;
       }
 
-      if (formData.precio <= 0) {
+      if (!formData.precio || formData.precio <= 0) {
         toast.error("El precio debe ser mayor a 0");
         return;
       }
 
-      if (formData.descuento && (formData.descuento < 0 || formData.descuento > 100)) {
+      if (formData.descuento !== undefined && (formData.descuento < 0 || formData.descuento > 100)) {
         toast.error("El descuento debe estar entre 0 y 100");
         return;
       }
@@ -263,8 +263,8 @@ export default function ProductForm({ product, business_id, onSuccess, onCancel 
                 type="number"
                 min="0"
                 step="100"
-                value={formData.precio}
-                onChange={(e) => setFormData({ ...formData, precio: Number(e.target.value) })}
+                value={formData.precio ?? ""}
+                onChange={(e) => setFormData({ ...formData, precio: e.target.value ? Number(e.target.value) : undefined })}
                 placeholder="18000"
                 required
                 disabled={isSaving}
@@ -277,8 +277,8 @@ export default function ProductForm({ product, business_id, onSuccess, onCancel 
                 type="number"
                 min="0"
                 max="100"
-                value={formData.descuento}
-                onChange={(e) => setFormData({ ...formData, descuento: Number(e.target.value) })}
+                value={formData.descuento ?? ""}
+                onChange={(e) => setFormData({ ...formData, descuento: e.target.value ? Number(e.target.value) : undefined })}
                 placeholder="0"
                 disabled={isSaving}
               />
@@ -286,7 +286,7 @@ export default function ProductForm({ product, business_id, onSuccess, onCancel 
           </div>
 
           {/* Preview de precio con descuento */}
-          {formData.descuento && formData.descuento > 0 && formData.precio > 0 && (
+          {formData.descuento && formData.descuento > 0 && formData.precio && formData.precio > 0 && (
             <div className="bg-muted/50 rounded-lg p-3">
               <div className="flex items-center gap-2">
                 <Badge variant="secondary">-{formData.descuento}%</Badge>

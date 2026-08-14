@@ -96,15 +96,23 @@ export function useProducts() {
           imagen_url,
           fecha_publicacion,
           estado_vigencia,
+          created_at,
+          updated_at,
           business:businesses(
             id,
+            profile_id,
             nombre_negocio,
             whatsapp,
-            ubicacion
+            ubicacion,
+            descripcion,
+            foto_perfil_url,
+            created_at,
+            updated_at
           ),
           category:categories(
             id,
-            nombre_categoria
+            nombre_categoria,
+            created_at
           )
         `)
         .eq('estado_vigencia', 'vigente')
@@ -112,7 +120,7 @@ export function useProducts() {
         .limit(100); // Limitar a 100 productos para mejor rendimiento
       
       if (error) throw error;
-      return data as ProductWithRelations[];
+      return data as unknown as ProductWithRelations[];
     },
     staleTime: 5 * 60 * 1000, // 5 minutos de caché
   });
@@ -137,15 +145,23 @@ export function useProductsByBusiness(businessId: string | undefined) {
           imagen_url,
           fecha_publicacion,
           estado_vigencia,
+          created_at,
+          updated_at,
           business:businesses(
             id,
+            profile_id,
             nombre_negocio,
             whatsapp,
-            ubicacion
+            ubicacion,
+            descripcion,
+            foto_perfil_url,
+            created_at,
+            updated_at
           ),
           category:categories(
             id,
-            nombre_categoria
+            nombre_categoria,
+            created_at
           )
         `)
         .eq('business_id', businessId)
@@ -153,7 +169,7 @@ export function useProductsByBusiness(businessId: string | undefined) {
         .limit(100); // Limitar a 100 productos para mejor rendimiento
       
       if (error) throw error;
-      return data as ProductWithRelations[];
+      return data as unknown as ProductWithRelations[];
     },
     enabled: !!businessId,
     staleTime: 5 * 60 * 1000, // 5 minutos de caché
@@ -188,15 +204,23 @@ export function useProductsByProfile(profileId: string | undefined) {
           imagen_url,
           fecha_publicacion,
           estado_vigencia,
+          created_at,
+          updated_at,
           business:businesses(
             id,
+            profile_id,
             nombre_negocio,
             whatsapp,
-            ubicacion
+            ubicacion,
+            descripcion,
+            foto_perfil_url,
+            created_at,
+            updated_at
           ),
           category:categories(
             id,
-            nombre_categoria
+            nombre_categoria,
+            created_at
           )
         `)
         .eq('business_id', business.id)
@@ -204,7 +228,7 @@ export function useProductsByProfile(profileId: string | undefined) {
         .limit(100); // Limitar a 100 productos para mejor rendimiento
       
       if (error) throw error;
-      return data as ProductWithRelations[];
+      return data as unknown as ProductWithRelations[];
     },
     enabled: !!profileId,
     staleTime: 5 * 60 * 1000, // 5 minutos de caché
@@ -228,15 +252,23 @@ export function useProductsByCategory(categoryId: string) {
           imagen_url,
           fecha_publicacion,
           estado_vigencia,
+          created_at,
+          updated_at,
           business:businesses(
             id,
+            profile_id,
             nombre_negocio,
             whatsapp,
-            ubicacion
+            ubicacion,
+            descripcion,
+            foto_perfil_url,
+            created_at,
+            updated_at
           ),
           category:categories(
             id,
-            nombre_categoria
+            nombre_categoria,
+            created_at
           )
         `)
         .eq('category_id', categoryId)
@@ -245,7 +277,7 @@ export function useProductsByCategory(categoryId: string) {
         .limit(100); // Limitar a 100 productos para mejor rendimiento
       
       if (error) throw error;
-      return data as ProductWithRelations[];
+      return data as unknown as ProductWithRelations[];
     },
     enabled: !!categoryId,
     staleTime: 5 * 60 * 1000, // 5 minutos de caché
@@ -339,8 +371,8 @@ export function useCreateProduct() {
           category_id: formData.category_id,
           nombre: formData.nombre.trim(),
           descripcion: formData.descripcion?.trim() || null,
-          precio: formData.precio,
-          descuento: formData.descuento,
+          precio: formData.precio || 0,
+          descuento: formData.descuento || null,
           imagen_url,
           estado_vigencia: 'vigente'
         })
