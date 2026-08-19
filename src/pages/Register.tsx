@@ -8,12 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { PasswordRequirements } from "@/components/PasswordRequirements";
 import { passwordErrorMessage } from "@/lib/passwordPolicy";
+import { isValidEmail } from "@/lib/emailValidation";
 
 const PENDING_ONBOARDING_KEY = "pending-onboarding";
 
 export default function Register() {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [emailError, setEmailError] = useState("");
 
   const [form, setForm] = useState({
     business: "",
@@ -28,9 +30,20 @@ export default function Register() {
 
   const set = (k: keyof typeof form, v: string) => setForm({ ...form, [k]: v });
 
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    set("email", value);
+    if (value && !isValidEmail(value)) {
+      setEmailError("Correo electrónico inválido. Ejemplo: usuario@gmail.com");
+    } else {
+      setEmailError("");
+    }
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (Object.values(form).some((v) => !v)) return toast.error("Completa todos los campos");
+    if (!isValidEmail(form.email)) return toast.error("Correo electrónico inválido. Ejemplo: usuario@gmail.com");
     const passwordError = passwordErrorMessage(form.password);
     if (passwordError) return toast.error(passwordError);
     if (form.password !== form.confirmPassword) return toast.error("Las contraseñas no coinciden");
@@ -85,7 +98,13 @@ export default function Register() {
             </div>
             <div>
               <Label>Correo electrónico</Label>
-              <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
+              <Input 
+                type="email" 
+                value={form.email} 
+                onChange={handleEmailChange}
+                className={emailError ? "border-red-500" : ""}
+              />
+              {emailError && <p className="text-sm text-red-500 mt-1">{emailError}</p>}
             </div>
             <div>
               <Label>WhatsApp</Label>
@@ -122,7 +141,7 @@ export default function Register() {
                 onChange={(e) => set("confirmPassword", e.target.value)}
               />
             </div>
-            <Button type="submit" className="sm:col-span-2 mt-2" disabled={isSubmitting}>
+            <Button type="submit" className="sm:col-span-2 mt-2" disabled={isSubmitting || !!emailError}>
               {isSubmitting ? "Creando..." : "Crear cuenta"}
             </Button>
           </form>

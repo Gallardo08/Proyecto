@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { canAccessAfterEmailConfirmation } from "@/lib/auth";
+import { isValidEmail } from "@/lib/emailValidation";
 
 const PENDING_ONBOARDING_KEY = "pending-onboarding";
 
@@ -18,6 +19,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [emailError, setEmailError] = useState("");
   const pendingConfirmation = new URLSearchParams(location.search).get("pendingConfirmation") === "1";
 
   if (loading) {
@@ -65,9 +67,23 @@ export default function Login() {
     }
   };
 
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setEmail(value);
+    if (value && !isValidEmail(value)) {
+      setEmailError("Correo electrónico inválido. Ejemplo: usuario@gmail.com");
+    } else {
+      setEmailError("");
+    }
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return toast.error("Completa todos los campos");
+    if (!isValidEmail(email)) {
+      setEmailError("Correo electrónico inválido. Ejemplo: usuario@gmail.com");
+      return toast.error("Correo electrónico inválido. Ejemplo: usuario@gmail.com");
+    }
     if (!isSupabaseConfigured) {
       return toast.error("Falta configurar Supabase. Crea .env.local con VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY.");
     }
@@ -174,13 +190,21 @@ export default function Login() {
           <form onSubmit={submit} className="space-y-4">
             <div>
               <Label htmlFor="email">Correo electrónico</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="lucy@ofertas.com" />
+              <Input 
+                id="email" 
+                type="email" 
+                value={email} 
+                onChange={handleEmailChange}
+                className={emailError ? "border-red-500" : ""}
+                placeholder="lucy@ofertas.com" 
+              />
+              {emailError && <p className="text-sm text-red-500 mt-1">{emailError}</p>}
             </div>
             <div>
               <Label htmlFor="pwd">Contraseña</Label>
               <Input id="pwd" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
+            <Button type="submit" className="w-full" disabled={isSubmitting || !!emailError}>
               {isSubmitting ? "Ingresando..." : "Iniciar sesión"}
             </Button>
             <div className="flex justify-between text-sm">

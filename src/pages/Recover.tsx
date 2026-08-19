@@ -6,14 +6,27 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { isValidEmail } from "@/lib/emailValidation";
 
 export default function Recover() {
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [emailError, setEmailError] = useState("");
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setEmail(value);
+    if (value && !isValidEmail(value)) {
+      setEmailError("Correo electrónico inválido. Ejemplo: usuario@gmail.com");
+    } else {
+      setEmailError("");
+    }
+  };
 
   const sendRecoveryEmail = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!email) return toast.error("Ingresa tu correo electrónico");
+    if (!isValidEmail(email)) return toast.error("Correo electrónico inválido. Ejemplo: usuario@gmail.com");
     if (!isSupabaseConfigured) return toast.error("Falta configurar Supabase.");
 
     setIsSubmitting(true);
@@ -44,11 +57,13 @@ export default function Recover() {
                 type="email"
                 autoComplete="email"
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={handleEmailChange}
+                className={emailError ? "border-red-500" : ""}
                 required
               />
+              {emailError && <p className="text-sm text-red-500 mt-1">{emailError}</p>}
             </div>
-            <Button className="w-full" type="submit" disabled={isSubmitting}>
+            <Button className="w-full" type="submit" disabled={isSubmitting || !!emailError}>
               {isSubmitting ? "Enviando..." : "Enviar enlace"}
             </Button>
           </form>
