@@ -374,6 +374,7 @@ export function useCreateProduct() {
           precio: formData.precio || 0,
           descuento: formData.descuento || null,
           imagen_url,
+          fecha_publicacion: new Date().toISOString(),
           estado_vigencia: 'vigente'
         })
         .select()

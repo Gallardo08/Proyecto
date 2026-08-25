@@ -61,6 +61,7 @@ export default function ProductGallery({ products, loading, errorMessage }: Prod
   };
 
   const formatPublicationDate = (dateString: string) => {
+    if (!dateString) return "";
     const date = new Date(dateString);
     if (Number.isNaN(date.getTime())) return "";
     return date.toLocaleDateString('es-CO', {
@@ -71,11 +72,21 @@ export default function ProductGallery({ products, loading, errorMessage }: Prod
   };
 
   const getPublicationAge = (dateString: string) => {
+    if (!dateString) return "";
     const publishedDate = new Date(dateString);
     if (Number.isNaN(publishedDate.getTime())) return "";
-    const diffMs = Date.now() - publishedDate.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    return diffDays === 0 ? "Publicado hoy" : `Publicado hace ${diffDays} día${diffDays === 1 ? '' : 's'}`;
+    
+    // Convertir ambas fechas a fecha local para calcular días correctamente
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const pubDate = new Date(publishedDate.getFullYear(), publishedDate.getMonth(), publishedDate.getDate());
+    
+    const diffTime = today.getTime() - pubDate.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return "Publicado hoy";
+    if (diffDays === 1) return "Publicado ayer";
+    return `Publicado hace ${diffDays} días`;
   };
 
   const openWhatsApp = (phone: string, productName: string, businessName: string) => {
