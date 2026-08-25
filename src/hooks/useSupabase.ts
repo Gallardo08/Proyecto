@@ -176,6 +176,26 @@ export function useProductsByBusiness(businessId: string | undefined) {
   });
 }
 
+export function useBusinessProductCount(businessId: string | undefined) {
+  return useQuery({
+    queryKey: ['products', 'count', businessId],
+    queryFn: async () => {
+      if (!businessId) return 0;
+
+      const { data, error } = await supabase
+        .from('products')
+        .select('id')
+        .eq('business_id', businessId)
+        .eq('estado_vigencia', 'vigente');
+      
+      if (error) throw error;
+      return data?.length || 0;
+    },
+    enabled: !!businessId,
+    staleTime: 2 * 60 * 1000, // 2 minutos de caché
+  });
+}
+
 export function useProductsByProfile(profileId: string | undefined) {
   return useQuery({
     queryKey: ['products', 'profile', profileId],
@@ -340,6 +360,22 @@ export function useCreateProduct() {
 
       if (requestedBusinessId && requestedBusinessId !== business.id) {
         throw new Error("El negocio seleccionado no pertenece al usuario autenticado.");
+      }
+
+      // Verificar límite de 3 publicaciones por negocio
+      const { data: existingProducts, error: countError } = await supabase
+        .from('products')
+        .select('id')
+        .eq('business_id', business.id)
+        .eq('estado_vigencia', 'vigente');
+
+      if (countError) {
+        throw new Error(getSupabaseErrorMessage(countError, "No se pudo verificar tus publicaciones existentes"));
+      }
+
+      // Solo bloquear si tiene exactamente 3 productos (permitir caso heredado de > 3)
+      if (existingProducts && existingProducts.length === 3) {
+        throw new Error("Has alcanzado el límite de 3 publicaciones activas. Elimina o actualiza una publicación existente para agregar más.");
       }
 
       let imagen_url: string | undefined;

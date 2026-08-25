@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { X, Upload, Image as ImageIcon, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { useCategories, useCreateProduct, useUpdateProduct } from "@/hooks/useSupabase";
+import { useCategories, useCreateProduct, useUpdateProduct, useBusinessProductCount } from "@/hooks/useSupabase";
 import type { ProductFormData, ProductWithRelations } from "@/types/database";
 
 interface ProductFormProps {
@@ -27,7 +27,10 @@ export default function ProductForm({ product, business_id, onSuccess, onCancel 
   const { data: categories = [] } = useCategories();
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
+  const { data: productCount = 0 } = useBusinessProductCount(business_id);
   const isSaving = isSubmitting || createProduct.isPending || updateProduct.isPending;
+  const hasReachedLimit = !product && productCount >= 3;
+  const isOverLimit = !product && productCount > 3;
 
   const [formData, setFormData] = useState<ProductFormData>({
     nombre: product?.nombre || "",
@@ -139,9 +142,16 @@ export default function ProductForm({ product, business_id, onSuccess, onCancel 
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>
-          {product ? "Editar Producto" : "Nuevo Producto"}
-        </CardTitle>
+        <div className="flex-1">
+          <CardTitle>
+            {product ? "Editar Producto" : "Nuevo Producto"}
+          </CardTitle>
+          {!product && (
+            <p className="text-sm text-muted-foreground mt-1">
+              Publicaciones activas: {productCount}/3
+            </p>
+          )}
+        </div>
         {onCancel && (
           <Button variant="ghost" size="icon" onClick={onCancel}>
             <X className="h-4 w-4" />
@@ -149,6 +159,20 @@ export default function ProductForm({ product, business_id, onSuccess, onCancel 
         )}
       </CardHeader>
       <CardContent>
+        {isOverLimit && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800">
+              ℹ️ Tienes {productCount} publicaciones activas. A partir de ahora el límite es de 3 publicaciones. Te recomendamos mantener tus publicaciones más relevantes.
+            </p>
+          </div>
+        )}
+        {hasReachedLimit && !isOverLimit && (
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-sm text-amber-800">
+              ⚠️ Has alcanzado el límite de 3 publicaciones activas. Para agregar más productos, elimina o actualiza una publicación existente.
+            </p>
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Imagen */}
           <div className="space-y-2">
@@ -305,7 +329,7 @@ export default function ProductForm({ product, business_id, onSuccess, onCancel 
             <Button
               type="submit"
               className="flex-1"
-              disabled={isSaving}
+              disabled={isSaving || (hasReachedLimit && !isOverLimit)}
             >
               {isSaving ? (
                 <>
